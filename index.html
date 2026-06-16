@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>📞 AGENT PHONE — Die geheime Telefon-Mission</title>
+<style>
+  :root{
+    --bg1:#0b1026; --bg2:#161b3c; --bg3:#241852;
+    --neon:#22e6c8; --neon2:#39ff88; --accent:#ff8a3d; --pink:#ff4d8d;
+    --gold:#ffd54a; --bad:#ff4d5e; --good:#39ff88;
+    --card:rgba(255,255,255,.07); --cardbr:rgba(255,255,255,.16);
+    --txt:#eaf2ff; --muted:#9fb0d9;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;height:100%;}
+  body{
+    font-family:"Segoe UI",system-ui,-apple-system,Roboto,sans-serif;
+    color:var(--txt);
+    background:linear-gradient(135deg,var(--bg1),var(--bg2),var(--bg3));
+    background-size:300% 300%;
+    animation:bgmove 18s ease infinite;
+    overflow:hidden;
+  }
+  @keyframes bgmove{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+
+  #fx{position:fixed;inset:0;pointer-events:none;z-index:50;}
+
+  #app{position:relative;height:100dvh;display:flex;flex-direction:column;max-width:760px;margin:0 auto;}
+
+  /* HUD */
+  #hud{
+    display:none;gap:8px;padding:10px 14px;align-items:center;flex-wrap:wrap;
+    background:rgba(0,0,0,.25);backdrop-filter:blur(6px);border-bottom:1px solid var(--cardbr);
+  }
+  .hud-chip{display:flex;align-items:center;gap:6px;font-weight:700;font-size:14px;
+    background:var(--card);border:1px solid var(--cardbr);padding:6px 10px;border-radius:999px;}
+  #xpwrap{flex:1;min-width:120px;height:14px;background:rgba(255,255,255,.12);border-radius:999px;overflow:hidden;border:1px solid var(--cardbr);position:relative;}
+  #xpbar{height:100%;width:0%;background:linear-gradient(90deg,var(--neon),var(--neon2));transition:width .5s cubic-bezier(.2,.9,.2,1);}
+  #xptxt{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;letter-spacing:.5px;}
+  .hearts{letter-spacing:2px;font-size:16px;}
+  #soundBtn{cursor:pointer;}
+
+  /* Screen */
+  #screen{flex:1;overflow-y:auto;padding:18px;display:flex;flex-direction:column;}
+  .center{margin:auto;width:100%;text-align:center;}
+
+  h1.title{font-size:34px;margin:0 0 4px;line-height:1.05;
+    background:linear-gradient(90deg,var(--neon),var(--accent),var(--pink));
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    text-shadow:0 0 30px rgba(34,230,200,.25);letter-spacing:1px;}
+  .subtitle{color:var(--muted);margin:0 0 18px;font-size:15px;}
+
+  .panel{background:var(--card);border:1px solid var(--cardbr);border-radius:20px;padding:18px;
+    box-shadow:0 12px 40px rgba(0,0,0,.35);backdrop-filter:blur(10px);}
+
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;
+    font-size:18px;font-weight:800;cursor:pointer;border:none;border-radius:16px;
+    padding:15px 22px;color:#06121a;
+    background:linear-gradient(135deg,var(--neon),var(--neon2));
+    box-shadow:0 8px 22px rgba(34,230,200,.35);transition:transform .08s, box-shadow .2s;
+    width:100%;margin-top:10px;}
+  .btn:active{transform:translateY(2px) scale(.99);}
+  .btn.alt{color:var(--txt);
+    background:linear-gradient(135deg,#34407f,#222a55);box-shadow:0 8px 22px rgba(0,0,0,.3);}
+  .btn.ghost{background:transparent;border:1px solid var(--cardbr);color:var(--muted);box-shadow:none;font-size:14px;padding:10px 16px;}
+
+  .story{color:#d7e2ff;font-size:16px;line-height:1.5;margin:14px 0;text-align:left;}
+  .badge{display:inline-block;background:var(--accent);color:#2a1400;font-weight:800;
+    padding:4px 12px;border-radius:999px;font-size:13px;margin-bottom:8px;}
+
+  /* Mission map */
+  .missionList{display:grid;gap:12px;margin-top:8px;}
+  .missionCard{display:flex;align-items:center;gap:14px;text-align:left;cursor:pointer;
+    background:var(--card);border:1px solid var(--cardbr);border-radius:16px;padding:14px;transition:transform .12s,border-color .2s;}
+  .missionCard:active{transform:scale(.98);}
+  .missionCard.locked{opacity:.45;cursor:not-allowed;}
+  .missionCard.done{border-color:var(--neon2);}
+  .missionEmoji{font-size:34px;}
+  .missionInfo b{font-size:17px;}
+  .missionInfo small{color:var(--muted);display:block;}
+  .missionState{margin-left:auto;font-size:22px;}
+
+  /* Flashcards */
+  .cardGrid{display:grid;grid-template-columns:1fr;gap:12px;margin:12px 0;}
+  .flash{perspective:1000px;cursor:pointer;height:96px;}
+  .flashInner{position:relative;width:100%;height:100%;transition:transform .5s;transform-style:preserve-3d;}
+  .flash.flipped .flashInner{transform:rotateY(180deg);}
+  .flashFace{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:10px;
+    backface-visibility:hidden;border-radius:16px;padding:12px;text-align:center;font-weight:700;font-size:18px;border:1px solid var(--cardbr);}
+  .flashFront{background:linear-gradient(135deg,#1f2b66,#2b1d63);}
+  .flashBack{background:linear-gradient(135deg,#0f3d3a,#13513f);transform:rotateY(180deg);color:#d7ffef;}
+  .flashFlag{position:absolute;top:8px;left:12px;font-size:12px;color:var(--muted);font-weight:800;letter-spacing:.5px;}
+  .speakBtn{position:absolute;top:6px;right:10px;font-size:18px;background:none;border:none;cursor:pointer;color:#fff;opacity:.8;}
+
+  /* Question */
+  .qHead{display:flex;justify-content:space-between;align-items:center;color:var(--muted);font-size:13px;font-weight:700;margin-bottom:6px;}
+  #timerWrap{height:8px;background:rgba(255,255,255,.12);border-radius:999px;overflow:hidden;margin-bottom:16px;}
+  #timerBar{height:100%;width:100%;background:linear-gradient(90deg,var(--neon2),var(--gold),var(--accent));transition:width .1s linear;}
+  .qPrompt{font-size:13px;color:var(--neon);font-weight:800;letter-spacing:1px;margin-bottom:6px;}
+  .qWord{font-size:26px;font-weight:800;line-height:1.2;margin:6px 0 4px;}
+  .qDir{color:var(--muted);font-size:13px;margin-bottom:18px;}
+  .options{display:grid;gap:11px;}
+  .opt{font-size:17px;font-weight:700;text-align:left;cursor:pointer;color:var(--txt);
+    background:var(--card);border:1px solid var(--cardbr);border-radius:14px;padding:15px 16px;transition:transform .08s,background .2s,border-color .2s;}
+  .opt:active{transform:scale(.99);}
+  .opt.correct{background:linear-gradient(135deg,#127a3e,#1faa57);border-color:var(--good);animation:pop .35s;}
+  .opt.wrong{background:linear-gradient(135deg,#8a1f2c,#c0303f);border-color:var(--bad);}
+  .opt.dim{opacity:.45;}
+  @keyframes pop{0%{transform:scale(1)}40%{transform:scale(1.04)}100%{transform:scale(1)}}
+
+  .shake{animation:shake .4s;}
+  @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-9px)}40%{transform:translateX(9px)}60%{transform:translateX(-6px)}80%{transform:translateX(6px)}}
+
+  .feedback{min-height:26px;margin-top:14px;font-weight:800;font-size:16px;}
+  .combo{position:fixed;left:50%;top:30%;transform:translateX(-50%);font-size:42px;font-weight:900;
+    color:var(--gold);text-shadow:0 0 20px rgba(255,213,74,.6);pointer-events:none;opacity:0;z-index:60;}
+  .combo.show{animation:comboAnim .9s ease;}
+  @keyframes comboAnim{0%{opacity:0;transform:translateX(-50%) scale(.4)}30%{opacity:1;transform:translateX(-50%) scale(1.1)}100%{opacity:0;transform:translateX(-50%) translateY(-40px) scale(1)}}
+
+  .statRow{display:flex;justify-content:space-around;margin:18px 0;}
+  .stat b{font-size:26px;display:block;}
+  .stat small{color:var(--muted);}
+  .ranklabel{font-size:22px;font-weight:900;color:var(--gold);margin:6px 0;}
+
+  .footnote{color:var(--muted);font-size:12px;margin-top:14px;}
+  .pulse{animation:pulse 1.6s infinite;}
+  @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
+  .phoneRing{display:inline-block;animation:ring 1s ease-in-out infinite;}
+  @keyframes ring{0%,100%{transform:rotate(0)}10%,30%,50%{transform:rotate(-14deg)}20%,40%{transform:rotate(14deg)}}
+</style>
+</head>
+<body>
+<canvas id="fx"></canvas>
+<div id="app">
+  <header id="hud">
+    <span class="hud-chip" id="missionChip">☎️ Mission 1</span>
+    <span class="hud-chip">Lvl <span id="lvl">1</span></span>
+    <div id="xpwrap"><div id="xpbar"></div><div id="xptxt"></div></div>
+    <span class="hud-chip"><span class="hearts" id="hearts">❤️❤️❤️</span></span>
+    <span class="hud-chip">🪙 <span id="coins">0</span></span>
+    <span class="hud-chip">🔥 <span id="streak">0</span></span>
+    <span class="hud-chip" id="soundBtn" title="Ton an/aus">🔊</span>
+  </header>
+  <main id="screen"></main>
+</div>
+<div class="combo" id="combo"></div>
+
+<script>
+/* ============================================================
+   AGENT PHONE — Die geheime Telefon-Mission
+   Ein ADHS-freundliches Vokabel-Abenteuer (DE <-> EN)
+   ============================================================ */
+
+/* ---------- Vokabeln (Nr. 35–56) ---------- */
+const VOCAB = [
+  {id:35, en:"Shall I put you through?",        de:"Soll ich Sie durchstellen?"},
+  {id:36, en:"Can I take a message?",            de:"Kann ich eine Nachricht aufnehmen?"},
+  {id:37, en:"Have you got my mobile number?",   de:"Haben Sie meine Handynummer?"},
+  {id:38, en:"certainly",                        de:"sicherlich / sicher doch"},
+  {id:39, en:"I'm afraid",                        de:"leider"},
+  {id:40, en:"Hang on a moment",                 de:"Bleib dran"},
+  {id:41, en:"... speaking",                      de:"... am Apparat"},
+  {id:42, en:"This is",                           de:"Hier ist"},
+  {id:43, en:"actually",                          de:"eigentlich"},
+  {id:44, en:"she's unavailable",                 de:"sie ist nicht verfügbar"},
+  {id:45, en:"out of the office",                 de:"außerhalb des Büros"},
+  {id:46, en:"on another line",                   de:"auf einer anderen Leitung"},
+  {id:47, en:"extension number",                  de:"Durchwahl"},
+  {id:48, en:"I didn't catch that",               de:"Ich habe das (akustisch) nicht verstanden"},
+  {id:49, en:"Could you please hold?",            de:"Bleiben Sie bitte dran"},
+  {id:50, en:"Her line is engaged",               de:"Ihre Leitung ist besetzt"},
+  {id:51, en:"I'm calling about",                 de:"Ich rufe an wegen"},
+  {id:52, en:"Let me just check that",            de:"Lassen Sie mich das prüfen"},
+  {id:53, en:"I just wanted to confirm",          de:"Ich wollte nur bestätigen"},
+  {id:54, en:"I will call you straight back",     de:"Ich rufe Sie gleich zurück"},
+  {id:55, en:"Can I call you back later?",        de:"Kann ich Sie später zurückrufen?"},
+  {id:56, en:"Would you like to leave a message?",de:"Wollen Sie eine Nachricht hinterlassen?"},
+];
+const byId = id => VOCAB.find(v=>v.id===id);
+
+/* ---------- Missionen (Abenteuer-Stationen) ---------- */
+const MISSIONS = [
+  { name:"Die Zentrale", emoji:"☎️",
+    story:"Dein erster Tag bei der Agentur. Das Telefon klingelt – ein Anrufer will durchgestellt werden. Beweise, dass du die Grund-Codes der Zentrale beherrschst!",
+    ids:[35,36,37,38,40] },
+  { name:"Im Büro", emoji:"🏢",
+    story:"Du wirst in die obere Etage versetzt. Hier melden sich Leute mit Namen und du musst sagen, wer gerade (nicht) erreichbar ist. Halte die Tarnung!",
+    ids:[41,42,43,44,45] },
+  { name:"Auf der Leitung", emoji:"📞",
+    story:"Die Leitungen glühen! Besetzt, Durchwahl, schlechte Verbindung – jetzt zählt jedes Wort. Bleib cool, Agent.",
+    ids:[46,47,48,49,50] },
+  { name:"Der Rückruf — BOSS", emoji:"🕵️",
+    story:"Finale gegen den Doppelagenten. Er ruft an wegen einer geheimen Sache und will eine Nachricht hinterlassen. Nur wer ALLE Codes kennt, gewinnt!",
+    ids:[39,51,52,53,54,55,56] },
+];
+
+const RANKS = ["Praktikant","Rookie-Agent","Feld-Agent","Spezialagent","Geheimagent","Meisterspion","Phantom 📞"];
+
+/* ---------- Spielzustand ---------- */
+const SAVE_KEY = "agentphone_save_v1";
+let G = loadGame();
+function defaultGame(){
+  return { unlocked:1, coins:0, level:1, xp:0, bestStreak:0 };
+}
+function loadGame(){
+  try{ const s = JSON.parse(localStorage.getItem(SAVE_KEY)); return s && s.unlocked ? s : defaultGame(); }
+  catch(e){ return defaultGame(); }
+}
+function saveGame(){ try{ localStorage.setItem(SAVE_KEY, JSON.stringify(G)); }catch(e){} }
+
+/* Laufende Mission */
+let M = null; // {missionIndex, queue, qIndex, lives, streak, correct, total}
+
+/* ---------- DOM ---------- */
+const screen = document.getElementById('screen');
+const hud = document.getElementById('hud');
+const elLvl = document.getElementById('lvl');
+const elXpBar = document.getElementById('xpbar');
+const elXpTxt = document.getElementById('xptxt');
+const elHearts = document.getElementById('hearts');
+const elCoins = document.getElementById('coins');
+const elStreak = document.getElementById('streak');
+const elMissionChip = document.getElementById('missionChip');
+const elCombo = document.getElementById('combo');
+
+/* ---------- Helpers ---------- */
+function shuffle(a){ a=a.slice(); for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; }
+function xpForLevel(l){ return 60 + (l-1)*40; } // steigend
+function rankFor(l){ return RANKS[Math.min(l-1, RANKS.length-1)]; }
+
+/* ---------- Sound (Web Audio, ohne Dateien) ---------- */
+let soundOn = true, actx=null;
+function audio(){ if(!actx){ try{ actx = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } return actx; }
+function beep(freq, dur=0.12, type='sine', vol=0.2, when=0){
+  if(!soundOn) return; const ac=audio(); if(!ac) return;
+  const t=ac.currentTime+when;
+  const o=ac.createOscillator(), g=ac.createGain();
+  o.type=type; o.frequency.value=freq;
+  g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(vol,t+0.01);
+  g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  o.connect(g); g.connect(ac.destination); o.start(t); o.stop(t+dur+0.02);
+}
+const S = {
+  click(){ beep(420,0.05,'square',0.12); },
+  correct(){ [523,659,784,1046].forEach((f,i)=>beep(f,0.14,'triangle',0.2,i*0.07)); },
+  wrong(){ beep(180,0.18,'sawtooth',0.18); beep(120,0.25,'sawtooth',0.16,0.06); },
+  levelup(){ [523,659,784,1046,1318].forEach((f,i)=>beep(f,0.18,'triangle',0.22,i*0.08)); },
+  flip(){ beep(700,0.05,'sine',0.1); },
+  win(){ [392,523,659,784,1046,1318,1568].forEach((f,i)=>beep(f,0.2,'triangle',0.22,i*0.1)); },
+  fail(){ [330,262,196].forEach((f,i)=>beep(f,0.25,'sawtooth',0.18,i*0.14)); }
+};
+document.getElementById('soundBtn').onclick = function(){
+  soundOn=!soundOn; this.textContent = soundOn ? '🔊':'🔇'; if(soundOn){audio(); S.click();}
+};
+
+/* ---------- Sprachausgabe ---------- */
+function speak(text, lang){
+  try{
+    if(!('speechSynthesis' in window)) return;
+    const clean = text.replace(/\.\.\./g,'').replace(/\s*\/\s*/g,', ');
+    const u = new SpeechSynthesisUtterance(clean);
+    u.lang = lang; u.rate = 0.95;
+    speechSynthesis.cancel(); speechSynthesis.speak(u);
+  }catch(e){}
+}
+
+/* ---------- Konfetti ---------- */
+const cv = document.getElementById('fx'), ctx = cv.getContext('2d');
+let parts = [];
+function resize(){ cv.width=innerWidth; cv.height=innerHeight; }
+resize(); addEventListener('resize', resize);
+function burst(x,y,n=26,colors=['#22e6c8','#39ff88','#ffd54a','#ff8a3d','#ff4d8d']){
+  for(let i=0;i<n;i++){
+    const a=Math.random()*Math.PI*2, sp=2+Math.random()*6;
+    parts.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp-3,g:0.18,life:60+Math.random()*30,
+      c:colors[Math.floor(Math.random()*colors.length)], s:4+Math.random()*5, rot:Math.random()*6, vr:(-.3+Math.random()*.6)});
+  }
+}
+function tick(){
+  ctx.clearRect(0,0,cv.width,cv.height);
+  for(let i=parts.length-1;i>=0;i--){
+    const p=parts[i]; p.vy+=p.g; p.x+=p.vx; p.y+=p.vy; p.rot+=p.vr; p.life--;
+    if(p.life<=0||p.y>cv.height+40){parts.splice(i,1);continue;}
+    ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.rot); ctx.globalAlpha=Math.min(1,p.life/30);
+    ctx.fillStyle=p.c; ctx.fillRect(-p.s/2,-p.s/2,p.s,p.s*1.5); ctx.restore();
+  }
+  requestAnimationFrame(tick);
+}
+tick();
+
+/* ---------- HUD update ---------- */
+function updateHUD(){
+  elLvl.textContent = G.level;
+  const need = xpForLevel(G.level);
+  elXpBar.style.width = Math.min(100,(G.xp/need)*100)+'%';
+  elXpTxt.textContent = G.xp+' / '+need+' XP';
+  elCoins.textContent = G.coins;
+  if(M){
+    elHearts.textContent = '❤️'.repeat(M.lives) + '🖤'.repeat(Math.max(0,3-M.lives));
+    elStreak.textContent = M.streak;
+    elMissionChip.textContent = MISSIONS[M.missionIndex].emoji+' '+MISSIONS[M.missionIndex].name;
+  }
+}
+function addXP(amount){
+  G.xp += amount;
+  let leveled=false;
+  while(G.xp >= xpForLevel(G.level)){ G.xp -= xpForLevel(G.level); G.level++; leveled=true; }
+  if(leveled){ S.levelup(); burst(innerWidth/2, innerHeight*0.3, 50); showCombo('LEVEL UP! ⭐ '+rankFor(G.level)); }
+  saveGame(); updateHUD();
+}
+function showCombo(txt){
+  elCombo.textContent = txt; elCombo.classList.remove('show'); void elCombo.offsetWidth; elCombo.classList.add('show');
+}
+
+/* ============================================================
+   SCREENS
+   ============================================================ */
+
+function showStart(){
+  M=null; hud.style.display='none';
+  screen.innerHTML = `
+    <div class="center">
+      <div class="phoneRing" style="font-size:64px">📞</div>
+      <h1 class="title">AGENT PHONE</h1>
+      <p class="subtitle">Die geheime Telefon-Mission · DE ⇄ EN</p>
+      <div class="panel">
+        <span class="badge">🕵️ Geheimakte</span>
+        <p class="story">Willkommen, Agent. Die Welt der Telefonate ist voller geheimer Codes.
+        Übersetze die Anrufe richtig, sammle XP &amp; 🪙, halte deine 🔥 Combo und arbeite dich vom
+        <b>Praktikanten</b> zum <b>Phantom</b> hoch. 22 Codes, 4 Missionen. Bereit?</p>
+        <button class="btn" id="playBtn">▶︎ Mission starten</button>
+        <button class="btn ghost" id="resetBtn">🗑️ Fortschritt zurücksetzen</button>
+      </div>
+      <p class="footnote">Tipp: Schnelle Antworten geben Bonus-Punkte. 🔊 oben rechts schaltet den Ton um.</p>
+    </div>`;
+  document.getElementById('playBtn').onclick = ()=>{ audio(); S.click(); showMap(); };
+  document.getElementById('resetBtn').onclick = ()=>{
+    if(confirm('Wirklich allen Fortschritt löschen?')){ G=defaultGame(); saveGame(); S.click(); showStart(); }
+  };
+}
+
+function showMap(){
+  M=null; hud.style.display='flex'; updateHUD();
+  elMissionChip.textContent = '🗺️ Missions-Karte';
+  let cards = MISSIONS.map((m,i)=>{
+    const unlocked = (i+1)<=G.unlocked;
+    const done = (i+1)<G.unlocked;
+    const state = done ? '✅' : (unlocked ? '▶︎' : '🔒');
+    return `<div class="missionCard ${unlocked?'':'locked'} ${done?'done':''}" data-i="${i}">
+      <div class="missionEmoji">${m.emoji}</div>
+      <div class="missionInfo"><b>Mission ${i+1}: ${m.name}</b><small>${m.ids.length} Codes · ${unlocked?(done?'gemeistert':'verfügbar'):'gesperrt'}</small></div>
+      <div class="missionState">${state}</div>
+    </div>`;
+  }).join('');
+  screen.innerHTML = `
+    <div class="center">
+      <h1 class="title" style="font-size:26px">🗺️ Missions-Karte</h1>
+      <p class="subtitle">Rang: <b style="color:var(--gold)">${rankFor(G.level)}</b> · Beste Combo 🔥 ${G.bestStreak}</p>
+      <div class="missionList">${cards}</div>
+      <button class="btn ghost" id="homeBtn" style="margin-top:16px">← Startbildschirm</button>
+    </div>`;
+  document.querySelectorAll('.missionCard').forEach(c=>{
+    c.onclick=()=>{
+      const i=+c.dataset.i;
+      if((i+1)>G.unlocked){ S.wrong(); c.classList.add('shake'); setTimeout(()=>c.classList.remove('shake'),400); return; }
+      S.click(); showBriefing(i);
+    };
+  });
+  document.getElementById('homeBtn').onclick=()=>{ S.click(); showStart(); };
+}
+
+function showBriefing(i){
+  const m = MISSIONS[i];
+  hud.style.display='flex'; elMissionChip.textContent = m.emoji+' '+m.name;
+  const cards = m.ids.map(id=>{
+    const v=byId(id);
+    return `<div class="flash" data-en="${esc(v.en)}" data-de="${esc(v.de)}">
+      <div class="flashInner">
+        <div class="flashFace flashFront"><span class="flashFlag">🇬🇧 EN</span>${esc(v.en)}<button class="speakBtn" data-l="en-GB" data-t="${esc(v.en)}">🔊</button></div>
+        <div class="flashFace flashBack"><span class="flashFlag">🇩🇪 DE</span>${esc(v.de)}<button class="speakBtn" data-l="de-DE" data-t="${esc(v.de)}">🔊</button></div>
+      </div></div>`;
+  }).join('');
+  screen.innerHTML = `
+    <div class="center">
+      <span class="badge">${m.emoji} Mission ${i+1}: ${m.name}</span>
+      <p class="story">${m.story}</p>
+      <p class="subtitle">🃏 Briefing: Tippe die Karten an zum Umdrehen. 🔊 hört rein. Dann auf in den Einsatz!</p>
+      <div class="cardGrid">${cards}</div>
+      <button class="btn" id="goBtn">🚀 Einsatz beginnen</button>
+      <button class="btn ghost" id="backBtn">← Zurück zur Karte</button>
+    </div>`;
+  document.querySelectorAll('.flash').forEach(f=>{
+    f.onclick=(e)=>{ if(e.target.classList.contains('speakBtn')) return; f.classList.toggle('flipped'); S.flip(); };
+  });
+  document.querySelectorAll('.speakBtn').forEach(b=>{
+    b.onclick=(e)=>{ e.stopPropagation(); speak(b.dataset.t, b.dataset.l); };
+  });
+  document.getElementById('goBtn').onclick=()=>{ S.click(); startMission(i); };
+  document.getElementById('backBtn').onclick=()=>{ S.click(); showMap(); };
+}
+
+/* ---------- Frage-Engine ---------- */
+function buildQueue(i){
+  const m = MISSIONS[i];
+  let q=[];
+  m.ids.forEach(id=>{
+    q.push(makeQuestion(id,'en2de'));
+    q.push(makeQuestion(id,'de2en'));
+  });
+  return shuffle(q);
+}
+function makeQuestion(id, dir){
+  const v = byId(id);
+  const targetKey = dir==='en2de' ? 'de' : 'en';
+  const promptKey = dir==='en2de' ? 'en' : 'de';
+  // Distraktoren aus anderen Vokabeln
+  const pool = shuffle(VOCAB.filter(x=>x.id!==id)).slice(0,3);
+  const options = shuffle([v[targetKey], ...pool.map(x=>x[targetKey])]);
+  return { dir, prompt:v[promptKey], answer:v[targetKey], options,
+           promptLang: dir==='en2de'?'en-GB':'de-DE', ansLang: dir==='en2de'?'de-DE':'en-GB',
+           promptFlag: dir==='en2de'?'🇬🇧 Englisch':'🇩🇪 Deutsch',
+           ansFlag: dir==='en2de'?'🇩🇪 Deutsch':'🇬🇧 Englisch' };
+}
+
+let timerInt=null, timeLeft=0, TIME_MAX=12;
+function startMission(i){
+  M = { missionIndex:i, queue:buildQueue(i), qIndex:0, lives:3, streak:0, correct:0, total:0 };
+  M.total = M.queue.length;
+  updateHUD();
+  renderQuestion();
+}
+
+function renderQuestion(){
+  clearInterval(timerInt);
+  const q = M.queue[M.qIndex];
+  if(!q){ return missionComplete(); }
+  const num = M.qIndex+1, tot = M.queue.length;
+  screen.innerHTML = `
+    <div class="center" style="max-width:560px">
+      <div class="qHead"><span>📲 Anruf ${num}/${tot}</span><span>🔥 Combo: ${M.streak}</span></div>
+      <div id="timerWrap"><div id="timerBar"></div></div>
+      <div class="panel" id="qpanel">
+        <div class="qPrompt">${q.promptFlag} &nbsp;→&nbsp; ${q.ansFlag}</div>
+        <div class="qWord">${esc(q.prompt)} <button class="speakBtn" style="position:static;font-size:20px" id="qspeak">🔊</button></div>
+        <div class="qDir">Wähle die richtige Übersetzung:</div>
+        <div class="options" id="opts">
+          ${q.options.map((o,idx)=>`<button class="opt" data-i="${idx}">${esc(o)}</button>`).join('')}
+        </div>
+        <div class="feedback" id="fb"></div>
+      </div>
+    </div>`;
+  document.getElementById('qspeak').onclick=()=>speak(q.prompt, q.promptLang);
+  document.querySelectorAll('#opts .opt').forEach(b=>{
+    b.onclick=()=>answer(b, q);
+  });
+  // Timer
+  timeLeft = TIME_MAX;
+  const bar=document.getElementById('timerBar');
+  bar.style.width='100%';
+  timerInt = setInterval(()=>{
+    timeLeft -= 0.1;
+    bar.style.width = Math.max(0,(timeLeft/TIME_MAX)*100)+'%';
+    if(timeLeft<=3) bar.style.filter='hue-rotate(-30deg)';
+    if(timeLeft<=0){ clearInterval(timerInt); timeUp(q); }
+  },100);
+}
+
+let answered=false;
+function lockOptions(q, chosenBtn){
+  document.querySelectorAll('#opts .opt').forEach(b=>{
+    const txt=b.textContent;
+    if(txt===q.answer) b.classList.add('correct');
+    else if(b===chosenBtn) b.classList.add('wrong');
+    else b.classList.add('dim');
+    b.onclick=null;
+  });
+}
+
+function answer(btn, q){
+  if(answered) return; answered=true;
+  clearInterval(timerInt);
+  const correct = btn.textContent===q.answer;
+  lockOptions(q, btn);
+  const fb=document.getElementById('fb');
+  if(correct){
+    M.correct++; M.streak++;
+    if(M.streak>G.bestStreak){ G.bestStreak=M.streak; saveGame(); }
+    const speedBonus = Math.max(0, Math.round(timeLeft*2));
+    const mult = M.streak>=5?3 : M.streak>=3?2 : 1;
+    const coinsGot = (5+speedBonus)*mult;
+    const xpGot = (10+speedBonus)*mult;
+    G.coins += coinsGot;
+    S.correct();
+    const r=btn.getBoundingClientRect();
+    burst(r.left+r.width/2, r.top+r.height/2, 24);
+    if(mult>1) showCombo('COMBO x'+mult+'! 🔥');
+    fb.innerHTML = `<span style="color:var(--good)">✅ Richtig! +${xpGot} XP · +${coinsGot} 🪙 ${mult>1?'(x'+mult+' Combo!)':''}</span>`;
+    speak(q.answer, q.ansLang);
+    addXP(xpGot);
+  } else {
+    M.streak=0;
+    M.lives--;
+    S.wrong();
+    document.getElementById('qpanel').classList.add('shake');
+    setTimeout(()=>{const p=document.getElementById('qpanel'); if(p)p.classList.remove('shake');},420);
+    fb.innerHTML = `<span style="color:var(--bad)">❌ Richtig wäre: <b>${esc(q.answer)}</b></span>`;
+    updateHUD();
+    if(M.lives<=0){ setTimeout(()=>missionFailed(), 1300); return; }
+  }
+  updateHUD();
+  // weiter
+  setTimeout(()=>{ answered=false; M.qIndex++; renderQuestion(); }, correct?1000:1600);
+}
+
+function timeUp(q){
+  if(answered) return; answered=true;
+  document.querySelectorAll('#opts .opt').forEach(b=>{
+    if(b.textContent===q.answer) b.classList.add('correct'); else b.classList.add('dim');
+    b.onclick=null;
+  });
+  M.streak=0; M.lives--; S.wrong();
+  const fb=document.getElementById('fb');
+  fb.innerHTML = `<span style="color:var(--bad)">⏰ Zeit um! Richtig: <b>${esc(q.answer)}</b></span>`;
+  updateHUD();
+  if(M.lives<=0){ setTimeout(()=>missionFailed(),1300); return; }
+  setTimeout(()=>{ answered=false; M.qIndex++; renderQuestion(); }, 1600);
+}
+
+function missionComplete(){
+  clearInterval(timerInt);
+  const i=M.missionIndex;
+  const last = i===MISSIONS.length-1;
+  // Mission gemeistert -> nächste freischalten
+  if(i+1>=G.unlocked && !last) G.unlocked=i+2;
+  if(last && G.unlocked<=MISSIONS.length) G.unlocked=MISSIONS.length+1; // alles durch
+  saveGame();
+  S.win(); burst(innerWidth/2, innerHeight*0.4, 70);
+  const pct = Math.round((M.correct/M.total)*100);
+  const stars = pct>=90?'⭐⭐⭐':pct>=70?'⭐⭐':'⭐';
+  screen.innerHTML = `
+    <div class="center">
+      <div style="font-size:60px" class="pulse">${last?'🏆':'🎉'}</div>
+      <h1 class="title" style="font-size:28px">${last?'MISSION ABGESCHLOSSEN!':'Mission gemeistert!'}</h1>
+      <div class="panel">
+        <div class="ranklabel">${stars}</div>
+        <div class="statRow">
+          <div class="stat"><b>${M.correct}/${M.total}</b><small>richtig</small></div>
+          <div class="stat"><b>${pct}%</b><small>Trefferquote</small></div>
+          <div class="stat"><b>🔥 ${G.bestStreak}</b><small>beste Combo</small></div>
+        </div>
+        <p class="story" style="text-align:center">${last
+          ? 'Der Doppelagent ist enttarnt! Du beherrschst alle 22 Telefon-Codes. Rang: <b style="color:var(--gold)">'+rankFor(G.level)+'</b> 🕵️'
+          : 'Nächste Mission freigeschaltet! Weiter so, Agent.'}</p>
+        ${last?'<button class="btn" id="againBtn">🔁 Nochmal alles spielen</button>':'<button class="btn" id="nextBtn">➡️ Nächste Mission</button>'}
+        <button class="btn ghost" id="mapBtn">🗺️ Zur Missions-Karte</button>
+      </div>
+    </div>`;
+  if(last){
+    document.getElementById('againBtn').onclick=()=>{ S.click(); showBriefing(0); };
+  } else {
+    document.getElementById('nextBtn').onclick=()=>{ S.click(); showBriefing(i+1); };
+  }
+  document.getElementById('mapBtn').onclick=()=>{ S.click(); showMap(); };
+}
+
+function missionFailed(){
+  clearInterval(timerInt);
+  S.fail();
+  const i=M.missionIndex;
+  screen.innerHTML = `
+    <div class="center">
+      <div style="font-size:60px">📵</div>
+      <h1 class="title" style="font-size:26px">Verbindung verloren!</h1>
+      <div class="panel">
+        <p class="story" style="text-align:center">Keine Leben mehr – aber jede*r gute Agent*in versucht es nochmal.
+        Du hattest <b>${M.correct}</b> richtige Anrufe. Schau dir im Briefing kurz die Codes an und schlag erneut zu!</p>
+        <button class="btn" id="retryBtn">🔁 Mission wiederholen</button>
+        <button class="btn ghost" id="briefBtn">🃏 Erst Briefing ansehen</button>
+        <button class="btn ghost" id="mapBtn">🗺️ Zur Missions-Karte</button>
+      </div>
+    </div>`;
+  document.getElementById('retryBtn').onclick=()=>{ S.click(); startMission(i); };
+  document.getElementById('briefBtn').onclick=()=>{ S.click(); showBriefing(i); };
+  document.getElementById('mapBtn').onclick=()=>{ S.click(); showMap(); };
+}
+
+/* ---------- util ---------- */
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+/* ---------- los ---------- */
+updateHUD();
+showStart();
+</script>
+</body>
+</html>
