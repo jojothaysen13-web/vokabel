@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-<title>📞 AGENT PHONE — Die geheime Telefon-Mission</title>
+<title>📞 AGENT PHONE — Operation Doppelgänger</title>
 <style>
   :root{
     --bg1:#0b1026; --bg2:#161b3c; --bg3:#241852;
@@ -64,10 +64,36 @@
   .btn.alt{color:var(--txt);
     background:linear-gradient(135deg,#34407f,#222a55);box-shadow:0 8px 22px rgba(0,0,0,.3);}
   .btn.ghost{background:transparent;border:1px solid var(--cardbr);color:var(--muted);box-shadow:none;font-size:14px;padding:10px 16px;}
+  .btn.mini{width:auto;padding:10px 14px;font-size:14px;margin-top:8px;flex:1;}
 
   .story{color:#d7e2ff;font-size:16px;line-height:1.5;margin:14px 0;text-align:left;}
   .badge{display:inline-block;background:var(--accent);color:#2a1400;font-weight:800;
     padding:4px 12px;border-radius:999px;font-size:13px;margin-bottom:8px;}
+
+  /* Cast (Charaktere) */
+  .castRow{display:flex;justify-content:space-around;gap:6px;margin:16px 0;}
+  .cast{display:flex;flex-direction:column;align-items:center;gap:5px;font-size:11px;color:var(--muted);text-align:center;line-height:1.15;font-weight:700;}
+  .castEmo{font-size:34px;filter:drop-shadow(0 0 9px rgba(34,230,200,.45));animation:bob 2.6s ease-in-out infinite;}
+  .cast:nth-child(2) .castEmo{animation-delay:.3s}
+  .cast:nth-child(3) .castEmo{animation-delay:.6s}
+  .cast:nth-child(4) .castEmo{animation-delay:.9s}
+  @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+
+  /* Dialog-Szene */
+  .scene{display:flex;gap:14px;align-items:flex-start;text-align:left;
+    background:var(--card);border:1px solid var(--cardbr);border-radius:20px;padding:18px;
+    box-shadow:0 12px 40px rgba(0,0,0,.35);backdrop-filter:blur(10px);animation:fadeUp .35s;}
+  .scene.mine{flex-direction:row-reverse;text-align:right;}
+  .avatar{font-size:54px;filter:drop-shadow(0 0 14px var(--cc));animation:bob 2.2s ease-in-out infinite;flex:none;}
+  .bubbleWrap{flex:1;min-width:0;}
+  .speaker{font-weight:900;font-size:14px;letter-spacing:.5px;margin-bottom:5px;}
+  .bubble{font-size:17px;line-height:1.5;color:#eaf2ff;min-height:50px;}
+  .sceneBtns{display:flex;gap:10px;margin-top:14px;}
+  .sceneBtns .btn{margin-top:0;}
+  .dlgDots{display:flex;gap:6px;justify-content:center;margin-top:12px;}
+  .dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.22);transition:background .2s;}
+  .dot.on{background:var(--neon);box-shadow:0 0 8px var(--neon);}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
 
   /* Mission map */
   .missionList{display:grid;gap:12px;margin-top:8px;}
@@ -76,10 +102,19 @@
   .missionCard:active{transform:scale(.98);}
   .missionCard.locked{opacity:.45;cursor:not-allowed;}
   .missionCard.done{border-color:var(--neon2);}
-  .missionEmoji{font-size:34px;}
+  .missionCard.train{border-color:var(--gold);}
+  .missionEmoji{font-size:34px;flex:none;}
   .missionInfo b{font-size:17px;}
   .missionInfo small{color:var(--muted);display:block;}
   .missionState{margin-left:auto;font-size:22px;}
+
+  /* Methoden-Pills + Badges */
+  .methodRow{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:12px 0;}
+  .mpill{font-size:11px;font-weight:800;background:var(--card);border:1px solid var(--cardbr);
+    border-radius:999px;padding:5px 11px;color:var(--neon);}
+  .badgeRow{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:12px 0;}
+  .bChip{font-size:12px;font-weight:800;background:rgba(255,213,74,.12);border:1px solid var(--gold);
+    border-radius:999px;padding:5px 11px;color:var(--gold);}
 
   /* Flashcards */
   .cardGrid{display:grid;grid-template-columns:1fr;gap:12px;margin:12px 0;}
@@ -93,11 +128,12 @@
   .flashFlag{position:absolute;top:8px;left:12px;font-size:12px;color:var(--muted);font-weight:800;letter-spacing:.5px;}
   .speakBtn{position:absolute;top:6px;right:10px;font-size:18px;background:none;border:none;cursor:pointer;color:#fff;opacity:.8;}
 
-  /* Question */
-  .qHead{display:flex;justify-content:space-between;align-items:center;color:var(--muted);font-size:13px;font-weight:700;margin-bottom:6px;}
+  /* Question / Tasks */
+  .qHead{display:flex;justify-content:space-between;align-items:center;color:var(--muted);font-size:13px;font-weight:700;margin-bottom:6px;gap:10px;}
+  .qHead .exit{cursor:pointer;color:var(--accent);}
   #timerWrap{height:8px;background:rgba(255,255,255,.12);border-radius:999px;overflow:hidden;margin-bottom:16px;}
   #timerBar{height:100%;width:100%;background:linear-gradient(90deg,var(--neon2),var(--gold),var(--accent));transition:width .1s linear;}
-  .qPrompt{font-size:13px;color:var(--neon);font-weight:800;letter-spacing:1px;margin-bottom:6px;}
+  .qPrompt{font-size:13px;color:var(--neon);font-weight:800;letter-spacing:.5px;margin-bottom:6px;}
   .qWord{font-size:26px;font-weight:800;line-height:1.2;margin:6px 0 4px;}
   .qDir{color:var(--muted);font-size:13px;margin-bottom:18px;}
   .options{display:grid;gap:11px;}
@@ -109,19 +145,48 @@
   .opt.dim{opacity:.45;}
   @keyframes pop{0%{transform:scale(1)}40%{transform:scale(1.04)}100%{transform:scale(1)}}
 
+  .listenBig{font-size:48px;margin:8px 0;}
+
+  /* Satz-Puzzle */
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0;min-height:30px;}
+  .chip{cursor:pointer;background:linear-gradient(135deg,#2b3a7a,#23306b);border:1px solid var(--cardbr);
+    border-radius:12px;padding:10px 14px;font-weight:800;font-size:17px;color:var(--txt);transition:transform .08s;}
+  .chip:active{transform:scale(.93);}
+  .answerLine{min-height:56px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;
+    background:rgba(0,0,0,.22);border:1px dashed var(--cardbr);border-radius:14px;padding:10px;margin:10px 0;}
+  .answerLine .chip.in{background:linear-gradient(135deg,#127a3e,#1faa57);}
+  .ph{color:var(--muted);font-weight:600;}
+  .rowBtns{display:flex;gap:10px;}
+
+  /* Tippen */
+  input.tin{width:100%;font-size:19px;padding:14px;border-radius:14px;border:1px solid var(--cardbr);
+    background:rgba(0,0,0,.25);color:var(--txt);font-weight:700;outline:none;margin:10px 0;}
+  input.tin:focus{border-color:var(--neon);box-shadow:0 0 0 3px rgba(34,230,200,.18);}
+  .hintRow{display:flex;gap:10px;}
+
+  /* Memory */
+  .memGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0;}
+  .memCard{min-height:74px;display:flex;align-items:center;justify-content:center;text-align:center;padding:8px;
+    border-radius:14px;border:1px solid var(--cardbr);font-weight:700;font-size:13px;cursor:pointer;
+    transition:transform .1s,opacity .25s;background:linear-gradient(135deg,#34407f,#222a55);}
+  .memCard.down{font-size:26px;}
+  .memCard.face{background:linear-gradient(135deg,#0f3d3a,#13513f);}
+  .memCard.matched{opacity:.32;cursor:default;border-color:var(--neon2);}
+  .memCard:active{transform:scale(.97);}
+
   .shake{animation:shake .4s;}
   @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-9px)}40%{transform:translateX(9px)}60%{transform:translateX(-6px)}80%{transform:translateX(6px)}}
 
   .feedback{min-height:26px;margin-top:14px;font-weight:800;font-size:16px;}
-  .combo{position:fixed;left:50%;top:30%;transform:translateX(-50%);font-size:42px;font-weight:900;
-    color:var(--gold);text-shadow:0 0 20px rgba(255,213,74,.6);pointer-events:none;opacity:0;z-index:60;}
-  .combo.show{animation:comboAnim .9s ease;}
+  .combo{position:fixed;left:50%;top:28%;transform:translateX(-50%);font-size:40px;font-weight:900;
+    color:var(--gold);text-shadow:0 0 20px rgba(255,213,74,.6);pointer-events:none;opacity:0;z-index:60;text-align:center;}
+  .combo.show{animation:comboAnim 1s ease;}
   @keyframes comboAnim{0%{opacity:0;transform:translateX(-50%) scale(.4)}30%{opacity:1;transform:translateX(-50%) scale(1.1)}100%{opacity:0;transform:translateX(-50%) translateY(-40px) scale(1)}}
 
   .statRow{display:flex;justify-content:space-around;margin:18px 0;}
   .stat b{font-size:26px;display:block;}
   .stat small{color:var(--muted);}
-  .ranklabel{font-size:22px;font-weight:900;color:var(--gold);margin:6px 0;}
+  .ranklabel{font-size:24px;font-weight:900;color:var(--gold);margin:6px 0;}
 
   .footnote{color:var(--muted);font-size:12px;margin-top:14px;}
   .pulse{animation:pulse 1.6s infinite;}
@@ -134,7 +199,7 @@
 <canvas id="fx"></canvas>
 <div id="app">
   <header id="hud">
-    <span class="hud-chip" id="missionChip">☎️ Mission 1</span>
+    <span class="hud-chip" id="missionChip">☎️ ECHO</span>
     <span class="hud-chip">Lvl <span id="lvl">1</span></span>
     <div id="xpwrap"><div id="xpbar"></div><div id="xptxt"></div></div>
     <span class="hud-chip"><span class="hearts" id="hearts">❤️❤️❤️</span></span>
@@ -148,8 +213,9 @@
 
 <script>
 /* ============================================================
-   AGENT PHONE — Die geheime Telefon-Mission
+   AGENT PHONE — Operation Doppelgänger
    Ein ADHS-freundliches Vokabel-Abenteuer (DE <-> EN)
+   Mit Story, Charakteren und 5 Lernmethoden.
    ============================================================ */
 
 /* ---------- Vokabeln (Nr. 35–56) ---------- */
@@ -167,7 +233,7 @@ const VOCAB = [
   {id:45, en:"out of the office",                 de:"außerhalb des Büros"},
   {id:46, en:"on another line",                   de:"auf einer anderen Leitung"},
   {id:47, en:"extension number",                  de:"Durchwahl"},
-  {id:48, en:"I didn't catch that",               de:"Ich habe das (akustisch) nicht verstanden"},
+  {id:48, en:"I didn't catch that",               de:"Ich habe das nicht verstanden"},
   {id:49, en:"Could you please hold?",            de:"Bleiben Sie bitte dran"},
   {id:50, en:"Her line is engaged",               de:"Ihre Leitung ist besetzt"},
   {id:51, en:"I'm calling about",                 de:"Ich rufe an wegen"},
@@ -179,38 +245,117 @@ const VOCAB = [
 ];
 const byId = id => VOCAB.find(v=>v.id===id);
 
+/* ---------- Charaktere ---------- */
+const CHARS = {
+  sturm:  {name:"Direktorin Sturm", emoji:"🕶️", color:"#22e6c8"},
+  q:      {name:"Wendell «Q»",      emoji:"🤓", color:"#ffd54a"},
+  mia:    {name:"Mia",              emoji:"💁‍♀️", color:"#ff4d8d"},
+  jackal: {name:"Der Schakal",      emoji:"🦊", color:"#ff8a3d"},
+  you:    {name:"Du",               emoji:"🕵️", color:"#39ff88"},
+};
+
+/* ---------- Lernmethoden ---------- */
+const METHOD_INFO = {
+  flash:    {icon:"🃏", name:"Karten"},
+  choose:   {icon:"🎯", name:"Schnellwahl"},
+  listen:   {icon:"🎧", name:"Abhören"},
+  scramble: {icon:"🧩", name:"Satz-Puzzle"},
+  type:     {icon:"⌨️", name:"Funkspruch"},
+  memory:   {icon:"🧠", name:"Code-Memory"},
+};
+const METHOD_DESC = {
+  choose:   "Wähle die richtige Übersetzung",
+  listen:   "Hör genau hin & erkenne den Satz",
+  scramble: "Bau den Satz aus den Wörtern",
+  type:     "Tippe die Übersetzung selbst",
+  memory:   "Finde die Paare EN ↔ DE",
+};
+
 /* ---------- Missionen (Abenteuer-Stationen) ---------- */
 const MISSIONS = [
-  { name:"Die Zentrale", emoji:"☎️",
-    story:"Dein erster Tag bei der Agentur. Das Telefon klingelt – ein Anrufer will durchgestellt werden. Beweise, dass du die Grund-Codes der Zentrale beherrschst!",
-    ids:[35,36,37,38,40] },
-  { name:"Im Büro", emoji:"🏢",
-    story:"Du wirst in die obere Etage versetzt. Hier melden sich Leute mit Namen und du musst sagen, wer gerade (nicht) erreichbar ist. Halte die Tarnung!",
-    ids:[41,42,43,44,45] },
-  { name:"Auf der Leitung", emoji:"📞",
-    story:"Die Leitungen glühen! Besetzt, Durchwahl, schlechte Verbindung – jetzt zählt jedes Wort. Bleib cool, Agent.",
-    ids:[46,47,48,49,50] },
-  { name:"Der Rückruf — BOSS", emoji:"🕵️",
-    story:"Finale gegen den Doppelagenten. Er ruft an wegen einer geheimen Sache und will eine Nachricht hinterlassen. Nur wer ALLE Codes kennt, gewinnt!",
-    ids:[39,51,52,53,54,55,56] },
+  {
+    name:"Die Zentrale", emoji:"☎️", badge:"📞 Zentralen-Profi",
+    ids:[35,36,37,38,40],
+    methods:["choose","listen"], memory:false,
+    intro:[
+      {who:"sturm", text:"Pssst! Hier rüber, Rekrut. Ja, du. Willkommen bei ECHO – der geheimsten Telefonzentrale der Welt. 🤫"},
+      {who:"sturm", text:"Jemand verrät unsere Geheimnisse … am Telefon. Wir nennen ihn nur: den Schakal. 🦊"},
+      {who:"q",     text:"Hi! Ich bin Wendell, genannt «Q». Ich verkabel dich mit den wichtigsten Telefon-Codes. Und bitte – drück nicht den roten Knopf. 😅"},
+      {who:"sturm", text:"Deine erste Aufgabe: Beweise unten in der Zentrale, dass du Anrufe annehmen und durchstellen kannst. Los!"},
+    ],
+    outro:[
+      {who:"mia",   text:"Nicht schlecht für den ersten Tag! Ich bin Mia, Tisch nebenan. ☕"},
+      {who:"sturm", text:"Sauber, Agent. Die Zentrale traut dir. Aber der Schakal ist schon weiter oben im Gebäude …"},
+    ],
+  },
+  {
+    name:"Im Büro", emoji:"🏢", badge:"🏢 Büro-Fuchs",
+    ids:[41,42,43,44,45],
+    methods:["choose","listen","scramble"], memory:false,
+    intro:[
+      {who:"sturm", text:"Etage 2. Hier rufen Leute mit Namen an und fragen nach Kollegen. Sag clever, wer gerade (nicht) erreichbar ist – sonst fliegt deine Tarnung auf."},
+      {who:"q",     text:"Neu im Gepäck: das Satz-Puzzle 🧩. Bau ganze Sätze zusammen – wie ein echter Profi am Apparat."},
+    ],
+    outro:[
+      {who:"mia",   text:"Da! Auf Leitung 3 war eben jemand mit kratziger Stimme … und hat sofort aufgelegt. 😳"},
+      {who:"sturm", text:"Das war er. Der Schakal testet uns. Bleib dran, Agent."},
+    ],
+  },
+  {
+    name:"Auf der Leitung", emoji:"📞", badge:"🔌 Leitungs-Meister",
+    ids:[46,47,48,49,50],
+    methods:["choose","scramble","type"], memory:false,
+    intro:[
+      {who:"q",     text:"Die Leitungen glühen 🔥. Besetzt, Durchwahl, Rauschen. Heute schaltest du Funksprüche frei: jetzt wird getippt! ⌨️"},
+      {who:"sturm", text:"Jedes Wort zählt. Verlier bloß nicht die Verbindung."},
+    ],
+    outro:[
+      {who:"mia",   text:"Ich hab die Nummer zurückverfolgt … sie führt direkt ins Chefbüro. 😨"},
+      {who:"sturm", text:"Der Schakal ist einer von uns. Heute Nacht ruft er an. Sei bereit für ALLES."},
+    ],
+  },
+  {
+    name:"Der Rückruf — FINALE", emoji:"🕵️", badge:"🦊 Schakal-Jäger",
+    ids:[39,51,52,53,54,55,56],
+    methods:["choose","listen","scramble","type"], memory:true,
+    intro:[
+      {who:"sturm", text:"Das ist es, Agent. Der Schakal ist in der Leitung. Halt ihn hin, versteh jeden Code – dann schnappen wir ihn."},
+      {who:"jackal",text:"Guten Abend … Sie sind also der neue «Held». Mal sehen, ob Sie meinem Anruf folgen können. 🦊"},
+      {who:"q",     text:"Volle Ausrüstung an Bord: Schnellwahl, Abhören, Satz-Puzzle, Funkspruch – und zum Schluss Code-Memory 🧠. Viel Glück!"},
+    ],
+    outro:[
+      {who:"jackal",text:"Unmöglich … Sie haben jeden einzelnen Code geknackt!"},
+      {who:"sturm", text:"Spur gesichert, Stimme aufgezeichnet. Der Schakal ist enttarnt. 🎯"},
+      {who:"mia",   text:"Du hast es geschafft! Vom Praktikanten zum … schau mal auf deinen Rang. 😎"},
+      {who:"sturm", text:"Willkommen im Team, Agent. ECHO ist stolz auf dich. 📞✨"},
+    ],
+  },
 ];
 
 const RANKS = ["Praktikant","Rookie-Agent","Feld-Agent","Spezialagent","Geheimagent","Meisterspion","Phantom 📞"];
+const LANGMETA = {
+  en:{flag:"🇬🇧 Englisch", code:"en-GB", short:"EN"},
+  de:{flag:"🇩🇪 Deutsch",  code:"de-DE", short:"DE"},
+};
 
 /* ---------- Spielzustand ---------- */
-const SAVE_KEY = "agentphone_save_v1";
+const SAVE_KEY = "agentphone_save_v2";
 let G = loadGame();
 function defaultGame(){
-  return { unlocked:1, coins:0, level:1, xp:0, bestStreak:0 };
+  return { unlocked:1, coins:0, level:1, xp:0, bestStreak:0, badges:[] };
 }
 function loadGame(){
-  try{ const s = JSON.parse(localStorage.getItem(SAVE_KEY)); return s && s.unlocked ? s : defaultGame(); }
-  catch(e){ return defaultGame(); }
+  try{
+    const s = JSON.parse(localStorage.getItem(SAVE_KEY));
+    if(s && s.unlocked){ if(!Array.isArray(s.badges)) s.badges=[]; return s; }
+    return defaultGame();
+  }catch(e){ return defaultGame(); }
 }
 function saveGame(){ try{ localStorage.setItem(SAVE_KEY, JSON.stringify(G)); }catch(e){} }
 
-/* Laufende Mission */
-let M = null; // {missionIndex, queue, qIndex, lives, streak, correct, total}
+/* Laufende Mission / Training */
+let M = null;
+let answered = false;
 
 /* ---------- DOM ---------- */
 const screen = document.getElementById('screen');
@@ -226,8 +371,23 @@ const elCombo = document.getElementById('combo');
 
 /* ---------- Helpers ---------- */
 function shuffle(a){ a=a.slice(); for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; }
-function xpForLevel(l){ return 60 + (l-1)*40; } // steigend
+function xpForLevel(l){ return 60 + (l-1)*40; }
 function rankFor(l){ return RANKS[Math.min(l-1, RANKS.length-1)]; }
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+/* Hauptform einer Vokabel (vor "/", ohne Klammern) */
+function canonical(s){ return String(s).split('/')[0].replace(/\([^)]*\)/g,'').replace(/\s+/g,' ').trim(); }
+/* Normalisiert für den Vergleich (Kleinschreibung, ohne Satzzeichen) */
+function norm(s){ return String(s).toLowerCase().replace(/\([^)]*\)/g,'').replace(/[.,!?;:'"…]/g,'').replace(/\s+/g,' ').trim(); }
+/* Levenshtein-Distanz (für tolerante Tipp-Prüfung) */
+function lev(a,b){
+  const m=a.length,n=b.length; if(!m)return n; if(!n)return m;
+  const d=[]; for(let i=0;i<=m;i++){d[i]=[i];} for(let j=0;j<=n;j++){d[0][j]=j;}
+  for(let i=1;i<=m;i++)for(let j=1;j<=n;j++){
+    const c=a[i-1]===b[j-1]?0:1;
+    d[i][j]=Math.min(d[i-1][j]+1, d[i][j-1]+1, d[i-1][j-1]+c);
+  }
+  return d[m][n];
+}
 
 /* ---------- Sound (Web Audio, ohne Dateien) ---------- */
 let soundOn = true, actx=null;
@@ -247,6 +407,7 @@ const S = {
   wrong(){ beep(180,0.18,'sawtooth',0.18); beep(120,0.25,'sawtooth',0.16,0.06); },
   levelup(){ [523,659,784,1046,1318].forEach((f,i)=>beep(f,0.18,'triangle',0.22,i*0.08)); },
   flip(){ beep(700,0.05,'sine',0.1); },
+  ring(){ beep(900,0.1,'sine',0.15); beep(1100,0.1,'sine',0.15,0.14); },
   win(){ [392,523,659,784,1046,1318,1568].forEach((f,i)=>beep(f,0.2,'triangle',0.22,i*0.1)); },
   fail(){ [330,262,196].forEach((f,i)=>beep(f,0.25,'sawtooth',0.18,i*0.14)); }
 };
@@ -258,7 +419,7 @@ document.getElementById('soundBtn').onclick = function(){
 function speak(text, lang){
   try{
     if(!('speechSynthesis' in window)) return;
-    const clean = text.replace(/\.\.\./g,'').replace(/\s*\/\s*/g,', ');
+    const clean = String(text).replace(/\.\.\./g,'').replace(/\s*\/\s*/g,', ');
     const u = new SpeechSynthesisUtterance(clean);
     u.lang = lang; u.rate = 0.95;
     speechSynthesis.cancel(); speechSynthesis.speak(u);
@@ -289,7 +450,7 @@ function tick(){
 }
 tick();
 
-/* ---------- HUD update ---------- */
+/* ---------- HUD ---------- */
 function updateHUD(){
   elLvl.textContent = G.level;
   const need = xpForLevel(G.level);
@@ -297,9 +458,10 @@ function updateHUD(){
   elXpTxt.textContent = G.xp+' / '+need+' XP';
   elCoins.textContent = G.coins;
   if(M){
-    elHearts.textContent = '❤️'.repeat(M.lives) + '🖤'.repeat(Math.max(0,3-M.lives));
+    if(M.training){ elHearts.textContent = '♾️'; }
+    else elHearts.textContent = '❤️'.repeat(Math.max(0,M.lives)) + '🖤'.repeat(Math.max(0,M.maxLives-M.lives));
     elStreak.textContent = M.streak;
-    elMissionChip.textContent = MISSIONS[M.missionIndex].emoji+' '+MISSIONS[M.missionIndex].name;
+    elMissionChip.textContent = M.training ? '🎯 Trainingslager' : (M.m.emoji+' '+M.m.name);
   }
 }
 function addXP(amount){
@@ -314,78 +476,189 @@ function showCombo(txt){
 }
 
 /* ============================================================
-   SCREENS
+   DIALOG-SYSTEM (Charakter-Szenen)
    ============================================================ */
+let dlg=null, typeInt=null;
+function showDialogue(lines, onDone){
+  dlg = { lines, i:0, onDone, typing:false };
+  renderDlgLine();
+}
+function renderDlgLine(){
+  const line = dlg.lines[dlg.i];
+  const c = CHARS[line.who] || CHARS.sturm;
+  const mine = line.who==='you';
+  const last = dlg.i >= dlg.lines.length-1;
+  screen.innerHTML = `
+    <div class="center" style="max-width:600px">
+      <div class="scene ${mine?'mine':''}" id="scene">
+        <div class="avatar" style="--cc:${c.color}">${c.emoji}</div>
+        <div class="bubbleWrap">
+          <div class="speaker" style="color:${c.color}">${esc(c.name)}</div>
+          <div class="bubble" id="bub"></div>
+        </div>
+      </div>
+      <div class="sceneBtns">
+        <button class="btn" id="next">${last?'➡️ Weiter':'Weiter ▶'}</button>
+        <button class="btn ghost" id="skip" style="flex:none">⏭️</button>
+      </div>
+      <div class="dlgDots">${dlg.lines.map((_,k)=>`<span class="dot ${k===dlg.i?'on':''}"></span>`).join('')}</div>
+    </div>`;
+  S.ring();
+  typeLine(document.getElementById('bub'), line.text);
+  const advance = ()=>{
+    if(dlg && dlg.typing){ finishType(); return; }
+    if(!dlg) return;
+    dlg.i++;
+    if(dlg.i >= dlg.lines.length){ const done=dlg.onDone; dlg=null; done && done(); }
+    else { S.click(); renderDlgLine(); }
+  };
+  document.getElementById('next').onclick = advance;
+  document.getElementById('scene').onclick = ()=>{ if(dlg && dlg.typing) finishType(); };
+  document.getElementById('skip').onclick = ()=>{ const done=dlg?dlg.onDone:null; dlg=null; clearInterval(typeInt); S.click(); done && done(); };
+}
+function typeLine(el, text){
+  clearInterval(typeInt); dlg.typing=true; let i=0; el.textContent=''; el._full=text;
+  typeInt = setInterval(()=>{
+    if(!dlg){ clearInterval(typeInt); return; }
+    el.textContent = text.slice(0, ++i);
+    if(i>=text.length){ clearInterval(typeInt); dlg.typing=false; }
+  }, 16);
+}
+function finishType(){
+  clearInterval(typeInt);
+  const el=document.getElementById('bub');
+  if(el && dlg){ el.textContent = el._full||el.textContent; dlg.typing=false; }
+}
 
+/* ============================================================
+   SCREENS: Start / Karte / Training / Briefing
+   ============================================================ */
 function showStart(){
-  M=null; hud.style.display='none';
+  M=null; dlg=null; hud.style.display='none'; clearInterval(timerInt);
+  const seenBadges = G.badges.length ? `<div class="badgeRow">${G.badges.map(b=>`<span class="bChip">${esc(b)}</span>`).join('')}</div>` : '';
   screen.innerHTML = `
     <div class="center">
-      <div class="phoneRing" style="font-size:64px">📞</div>
+      <div class="phoneRing" style="font-size:60px">📞</div>
       <h1 class="title">AGENT PHONE</h1>
-      <p class="subtitle">Die geheime Telefon-Mission · DE ⇄ EN</p>
+      <p class="subtitle">Operation Doppelgänger · DE ⇄ EN</p>
       <div class="panel">
-        <span class="badge">🕵️ Geheimakte</span>
-        <p class="story">Willkommen, Agent. Die Welt der Telefonate ist voller geheimer Codes.
-        Übersetze die Anrufe richtig, sammle XP &amp; 🪙, halte deine 🔥 Combo und arbeite dich vom
-        <b>Praktikanten</b> zum <b>Phantom</b> hoch. 22 Codes, 4 Missionen. Bereit?</p>
+        <span class="badge">🕵️ Streng geheim</span>
+        <p class="story">Ein Maulwurf verrät unsere Geheimnisse – am Telefon. Tritt der <b>ECHO-Agentur</b> bei,
+        meistere die englischen Telefon-Codes und enttarne <b style="color:var(--accent)">den Schakal</b> 🦊.</p>
+        <div class="castRow">
+          <div class="cast"><div class="castEmo">🕶️</div><span>Direktorin<br>Sturm</span></div>
+          <div class="cast"><div class="castEmo">🤓</div><span>Wendell<br>«Q»</span></div>
+          <div class="cast"><div class="castEmo">💁‍♀️</div><span>Mia</span></div>
+          <div class="cast"><div class="castEmo">🦊</div><span>Der<br>Schakal</span></div>
+        </div>
+        <div class="methodRow">
+          <span class="mpill">🎯 Schnellwahl</span><span class="mpill">🎧 Abhören</span>
+          <span class="mpill">🧩 Satz-Puzzle</span><span class="mpill">⌨️ Funkspruch</span>
+          <span class="mpill">🧠 Memory</span>
+        </div>
+        ${seenBadges}
         <button class="btn" id="playBtn">▶︎ Mission starten</button>
+        <button class="btn alt" id="trainBtn">🎯 Freies Training</button>
         <button class="btn ghost" id="resetBtn">🗑️ Fortschritt zurücksetzen</button>
       </div>
-      <p class="footnote">Tipp: Schnelle Antworten geben Bonus-Punkte. 🔊 oben rechts schaltet den Ton um.</p>
+      <p class="footnote">Tipp: Schnelle Antworten geben Bonus. Combos schalten Extra-Leben ❤️ frei. 🔊 oben schaltet den Ton.</p>
     </div>`;
   document.getElementById('playBtn').onclick = ()=>{ audio(); S.click(); showMap(); };
+  document.getElementById('trainBtn').onclick = ()=>{ audio(); S.click(); showTraining(); };
   document.getElementById('resetBtn').onclick = ()=>{
     if(confirm('Wirklich allen Fortschritt löschen?')){ G=defaultGame(); saveGame(); S.click(); showStart(); }
   };
 }
 
 function showMap(){
-  M=null; hud.style.display='flex'; updateHUD();
+  M=null; dlg=null; hud.style.display='flex'; clearInterval(timerInt); updateHUD();
   elMissionChip.textContent = '🗺️ Missions-Karte';
-  let cards = MISSIONS.map((m,i)=>{
+  const cards = MISSIONS.map((m,i)=>{
     const unlocked = (i+1)<=G.unlocked;
     const done = (i+1)<G.unlocked;
     const state = done ? '✅' : (unlocked ? '▶︎' : '🔒');
+    const methods = m.methods.map(x=>METHOD_INFO[x].icon).join(' ') + (m.memory?' 🧠':'');
     return `<div class="missionCard ${unlocked?'':'locked'} ${done?'done':''}" data-i="${i}">
       <div class="missionEmoji">${m.emoji}</div>
-      <div class="missionInfo"><b>Mission ${i+1}: ${m.name}</b><small>${m.ids.length} Codes · ${unlocked?(done?'gemeistert':'verfügbar'):'gesperrt'}</small></div>
+      <div class="missionInfo"><b>Mission ${i+1}: ${m.name}</b>
+        <small>${m.ids.length} Codes · ${methods} · ${unlocked?(done?'gemeistert':'verfügbar'):'gesperrt'}</small></div>
       <div class="missionState">${state}</div>
     </div>`;
   }).join('');
+  const badges = G.badges.length ? `<div class="badgeRow">${G.badges.map(b=>`<span class="bChip">${esc(b)}</span>`).join('')}</div>` : '';
   screen.innerHTML = `
     <div class="center">
       <h1 class="title" style="font-size:26px">🗺️ Missions-Karte</h1>
       <p class="subtitle">Rang: <b style="color:var(--gold)">${rankFor(G.level)}</b> · Beste Combo 🔥 ${G.bestStreak}</p>
-      <div class="missionList">${cards}</div>
+      ${badges}
+      <div class="missionList">
+        ${cards}
+        <div class="missionCard train" id="trainCard">
+          <div class="missionEmoji">🎯</div>
+          <div class="missionInfo"><b>Trainingslager</b><small>Freies Üben · alle 5 Methoden · ohne Druck</small></div>
+          <div class="missionState">∞</div>
+        </div>
+      </div>
       <button class="btn ghost" id="homeBtn" style="margin-top:16px">← Startbildschirm</button>
     </div>`;
-  document.querySelectorAll('.missionCard').forEach(c=>{
+  document.querySelectorAll('.missionCard[data-i]').forEach(c=>{
     c.onclick=()=>{
       const i=+c.dataset.i;
       if((i+1)>G.unlocked){ S.wrong(); c.classList.add('shake'); setTimeout(()=>c.classList.remove('shake'),400); return; }
       S.click(); showBriefing(i);
     };
   });
+  document.getElementById('trainCard').onclick=()=>{ S.click(); showTraining(); };
   document.getElementById('homeBtn').onclick=()=>{ S.click(); showStart(); };
+}
+
+function showTraining(){
+  M=null; dlg=null; hud.style.display='flex'; clearInterval(timerInt); updateHUD();
+  elMissionChip.textContent = '🎯 Trainingslager';
+  const methods=['choose','listen','scramble','type','memory'];
+  const cards = methods.map(x=>`
+    <div class="missionCard" data-m="${x}">
+      <div class="missionEmoji">${METHOD_INFO[x].icon}</div>
+      <div class="missionInfo"><b>${METHOD_INFO[x].name}</b><small>${METHOD_DESC[x]}</small></div>
+      <div class="missionState">▶︎</div>
+    </div>`).join('');
+  screen.innerHTML = `
+    <div class="center">
+      <h1 class="title" style="font-size:24px">🎯 Trainingslager</h1>
+      <p class="subtitle">Üben ohne Druck – keine Leben, alle 22 Codes. Wähle deine Methode:</p>
+      <div class="missionList">${cards}</div>
+      <button class="btn ghost" id="back" style="margin-top:16px">← Zurück zur Karte</button>
+    </div>`;
+  document.querySelectorAll('.missionCard[data-m]').forEach(c=>{
+    c.onclick=()=>{ audio(); S.click(); startTraining(c.dataset.m); };
+  });
+  document.getElementById('back').onclick=()=>{ S.click(); showMap(); };
 }
 
 function showBriefing(i){
   const m = MISSIONS[i];
+  hud.style.display='flex'; updateHUD(); elMissionChip.textContent = m.emoji+' '+m.name;
+  showDialogue(m.intro, ()=> showFlashcards(i));
+}
+
+function showFlashcards(i){
+  const m = MISSIONS[i];
   hud.style.display='flex'; elMissionChip.textContent = m.emoji+' '+m.name;
   const cards = m.ids.map(id=>{
     const v=byId(id);
-    return `<div class="flash" data-en="${esc(v.en)}" data-de="${esc(v.de)}">
+    return `<div class="flash">
       <div class="flashInner">
         <div class="flashFace flashFront"><span class="flashFlag">🇬🇧 EN</span>${esc(v.en)}<button class="speakBtn" data-l="en-GB" data-t="${esc(v.en)}">🔊</button></div>
         <div class="flashFace flashBack"><span class="flashFlag">🇩🇪 DE</span>${esc(v.de)}<button class="speakBtn" data-l="de-DE" data-t="${esc(v.de)}">🔊</button></div>
       </div></div>`;
   }).join('');
+  const pills = m.methods.map(x=>`<span class="mpill">${METHOD_INFO[x].icon} ${METHOD_INFO[x].name}</span>`).join('')
+    + (m.memory?`<span class="mpill">🧠 Code-Memory</span>`:'');
   screen.innerHTML = `
     <div class="center">
       <span class="badge">${m.emoji} Mission ${i+1}: ${m.name}</span>
-      <p class="story">${m.story}</p>
-      <p class="subtitle">🃏 Briefing: Tippe die Karten an zum Umdrehen. 🔊 hört rein. Dann auf in den Einsatz!</p>
+      <p class="subtitle">🃏 Briefing — tippe die Karten zum Umdrehen, 🔊 zum Anhören. Präg sie dir gut ein!</p>
+      <div class="methodRow">${pills}</div>
       <div class="cardGrid">${cards}</div>
       <button class="btn" id="goBtn">🚀 Einsatz beginnen</button>
       <button class="btn ghost" id="backBtn">← Zurück zur Karte</button>
@@ -400,164 +673,429 @@ function showBriefing(i){
   document.getElementById('backBtn').onclick=()=>{ S.click(); showMap(); };
 }
 
-/* ---------- Frage-Engine ---------- */
-function buildQueue(i){
-  const m = MISSIONS[i];
-  let q=[];
-  m.ids.forEach(id=>{
-    q.push(makeQuestion(id,'en2de'));
-    q.push(makeQuestion(id,'de2en'));
+/* ============================================================
+   MISSION-ENGINE
+   ============================================================ */
+function buildTasks(m){
+  const recog = m.methods.filter(x=>x==='choose'||x==='listen');
+  const prod  = m.methods.filter(x=>x==='scramble'||x==='type');
+  const tasks=[];
+  m.ids.forEach((id,idx)=>{
+    if(recog.length){
+      const meth=recog[idx%recog.length];
+      tasks.push(meth==='choose'
+        ? {method:'choose', id, dir: idx%2 ? 'de2en':'en2de'}
+        : {method:'listen', id, heardLang: idx%2 ? 'de':'en'});
+    }
+    if(prod.length){
+      let meth=prod[idx%prod.length];
+      const produce = idx%2 ? 'en':'de';
+      const words = canonical(byId(id)[produce]).split(/\s+/).length;
+      if(meth==='type' && words>3) meth='scramble'; // lange Sätze lieber puzzeln
+      tasks.push({method:meth, id, produce});
+    }
   });
-  return shuffle(q);
-}
-function makeQuestion(id, dir){
-  const v = byId(id);
-  const targetKey = dir==='en2de' ? 'de' : 'en';
-  const promptKey = dir==='en2de' ? 'en' : 'de';
-  // Distraktoren aus anderen Vokabeln
-  const pool = shuffle(VOCAB.filter(x=>x.id!==id)).slice(0,3);
-  const options = shuffle([v[targetKey], ...pool.map(x=>x[targetKey])]);
-  return { dir, prompt:v[promptKey], answer:v[targetKey], options,
-           promptLang: dir==='en2de'?'en-GB':'de-DE', ansLang: dir==='en2de'?'de-DE':'en-GB',
-           promptFlag: dir==='en2de'?'🇬🇧 Englisch':'🇩🇪 Deutsch',
-           ansFlag: dir==='en2de'?'🇩🇪 Deutsch':'🇬🇧 Englisch' };
+  const out = shuffle(tasks);
+  if(m.memory){ out.push({method:'memory', ids: m.ids.slice(0, Math.min(6, m.ids.length))}); }
+  return out;
 }
 
-let timerInt=null, timeLeft=0, TIME_MAX=12;
 function startMission(i){
-  M = { missionIndex:i, queue:buildQueue(i), qIndex:0, lives:3, streak:0, correct:0, total:0 };
-  M.total = M.queue.length;
-  updateHUD();
-  renderQuestion();
+  const m=MISSIONS[i];
+  M = { i, m, tasks:buildTasks(m), t:0, lives:4, maxLives:5, streak:0, correct:0, total:0, mistakes:0, training:false };
+  M.total = M.tasks.length;
+  hud.style.display='flex'; updateHUD();
+  nextTask();
 }
 
-function renderQuestion(){
+function nextTask(){
+  if(!M) return;
+  if(M.t >= M.tasks.length) return missionDebrief();
+  renderTask(M.tasks[M.t]);
+}
+
+function renderTask(task){
+  clearInterval(timerInt); answered=false; updateHUD();
+  if(task.method==='choose')        renderChoose(task);
+  else if(task.method==='listen')   renderListen(task);
+  else if(task.method==='scramble') renderScramble(task);
+  else if(task.method==='type')     renderType(task);
+  else if(task.method==='memory')   renderMemory(task);
+  if(M.training) appendTrainExit();
+}
+function appendTrainExit(){
+  const c=screen.querySelector('.center'); if(!c) return;
+  const b=document.createElement('button');
+  b.className='btn ghost'; b.textContent='🚪 Training beenden'; b.style.marginTop='14px';
+  b.onclick=()=>{ S.click(); M=null; showMap(); };
+  c.appendChild(b);
+}
+
+/* Belohnung / Strafe */
+function registerCorrect(anchorEl, fast){
+  M.correct++; M.streak++;
+  if(M.streak>G.bestStreak){ G.bestStreak=M.streak; }
+  if(!M.training && M.streak%5===0 && M.lives<M.maxLives){ M.lives++; showCombo('+1 ❤️ BONUS-LEBEN!'); }
+  const mult = M.streak>=8 ? 3 : M.streak>=4 ? 2 : 1;
+  const coins=(6+(fast?6:0))*mult, xp=(10+(fast?6:0))*mult;
+  G.coins += coins; S.correct();
+  if(anchorEl){ const r=anchorEl.getBoundingClientRect(); burst(r.left+r.width/2, r.top+r.height/2, 22); }
+  else burst(innerWidth/2, innerHeight*0.4, 22);
+  if(mult>1 && M.streak%5!==0) showCombo('COMBO x'+mult+' 🔥');
+  addXP(xp);
+  return {coins,xp,mult};
+}
+function registerWrong(){
+  M.streak=0; if(!M.training) M.lives--; M.mistakes++; S.wrong(); saveGame(); updateHUD();
+}
+
+/* Ergebnis verarbeiten (für choose/listen/scramble/type) */
+function resolve(correct, anchorEl, answerText, fast){
+  if(answered) return; answered=true; clearInterval(timerInt);
+  const fb=document.getElementById('fb');
+  if(correct){
+    const r=registerCorrect(anchorEl, fast);
+    if(fb) fb.innerHTML = `<span style="color:var(--good)">✅ Treffer! +${r.xp} XP · +${r.coins} 🪙 ${r.mult>1?'(x'+r.mult+'!)':''}</span>`;
+    advance(950);
+  } else {
+    registerWrong();
+    if(fb) fb.innerHTML = `<span style="color:var(--bad)">❌ Richtig: <b>${esc(answerText)}</b></span>`;
+    const p=document.getElementById('qpanel')||document.querySelector('.panel');
+    if(p){ p.classList.add('shake'); setTimeout(()=>p.classList.remove('shake'),420); }
+    if(!M.training && M.lives<=0){ setTimeout(missionFailed, 1300); return; }
+    advance(1550);
+  }
+}
+function advance(delay){
+  setTimeout(()=>{
+    if(!M) return;
+    if(M.training){ M.solved++; trainNext(); }
+    else { M.t++; nextTask(); }
+  }, delay);
+}
+
+function taskHeader(label){
+  const right = M.training ? ('#'+(M.solved+1)) : ((M.t+1)+'/'+M.total);
+  return `<div class="qHead"><span>${M.m?M.m.emoji+' ':''}${label} · ${right}</span><span>🔥 Combo: ${M.streak}</span></div>`;
+}
+
+/* ---------- Timer (nur Schnellwahl & Abhören) ---------- */
+let timerInt=null, timeLeft=0; const TIME_MAX=13;
+function startTimer(onEnd){
+  timeLeft=TIME_MAX; const bar=document.getElementById('timerBar'); if(bar){ bar.style.width='100%'; bar.style.filter='none'; }
   clearInterval(timerInt);
-  const q = M.queue[M.qIndex];
-  if(!q){ return missionComplete(); }
-  const num = M.qIndex+1, tot = M.queue.length;
-  screen.innerHTML = `
-    <div class="center" style="max-width:560px">
-      <div class="qHead"><span>📲 Anruf ${num}/${tot}</span><span>🔥 Combo: ${M.streak}</span></div>
-      <div id="timerWrap"><div id="timerBar"></div></div>
-      <div class="panel" id="qpanel">
-        <div class="qPrompt">${q.promptFlag} &nbsp;→&nbsp; ${q.ansFlag}</div>
-        <div class="qWord">${esc(q.prompt)} <button class="speakBtn" style="position:static;font-size:20px" id="qspeak">🔊</button></div>
-        <div class="qDir">Wähle die richtige Übersetzung:</div>
-        <div class="options" id="opts">
-          ${q.options.map((o,idx)=>`<button class="opt" data-i="${idx}">${esc(o)}</button>`).join('')}
-        </div>
-        <div class="feedback" id="fb"></div>
-      </div>
-    </div>`;
-  document.getElementById('qspeak').onclick=()=>speak(q.prompt, q.promptLang);
-  document.querySelectorAll('#opts .opt').forEach(b=>{
-    b.onclick=()=>answer(b, q);
-  });
-  // Timer
-  timeLeft = TIME_MAX;
-  const bar=document.getElementById('timerBar');
-  bar.style.width='100%';
-  timerInt = setInterval(()=>{
+  timerInt=setInterval(()=>{
     timeLeft -= 0.1;
-    bar.style.width = Math.max(0,(timeLeft/TIME_MAX)*100)+'%';
-    if(timeLeft<=3) bar.style.filter='hue-rotate(-30deg)';
-    if(timeLeft<=0){ clearInterval(timerInt); timeUp(q); }
+    const b=document.getElementById('timerBar');
+    if(b){ b.style.width=Math.max(0,(timeLeft/TIME_MAX)*100)+'%'; if(timeLeft<=3) b.style.filter='hue-rotate(-40deg)'; }
+    if(timeLeft<=0){ clearInterval(timerInt); onEnd(); }
   },100);
 }
-
-let answered=false;
-function lockOptions(q, chosenBtn){
+function lockChoose(ans, chosen){
   document.querySelectorAll('#opts .opt').forEach(b=>{
-    const txt=b.textContent;
-    if(txt===q.answer) b.classList.add('correct');
-    else if(b===chosenBtn) b.classList.add('wrong');
+    if(b.textContent===ans) b.classList.add('correct');
+    else if(b===chosen) b.classList.add('wrong');
     else b.classList.add('dim');
     b.onclick=null;
   });
 }
-
-function answer(btn, q){
-  if(answered) return; answered=true;
-  clearInterval(timerInt);
-  const correct = btn.textContent===q.answer;
-  lockOptions(q, btn);
-  const fb=document.getElementById('fb');
-  if(correct){
-    M.correct++; M.streak++;
-    if(M.streak>G.bestStreak){ G.bestStreak=M.streak; saveGame(); }
-    const speedBonus = Math.max(0, Math.round(timeLeft*2));
-    const mult = M.streak>=5?3 : M.streak>=3?2 : 1;
-    const coinsGot = (5+speedBonus)*mult;
-    const xpGot = (10+speedBonus)*mult;
-    G.coins += coinsGot;
-    S.correct();
-    const r=btn.getBoundingClientRect();
-    burst(r.left+r.width/2, r.top+r.height/2, 24);
-    if(mult>1) showCombo('COMBO x'+mult+'! 🔥');
-    fb.innerHTML = `<span style="color:var(--good)">✅ Richtig! +${xpGot} XP · +${coinsGot} 🪙 ${mult>1?'(x'+mult+' Combo!)':''}</span>`;
-    speak(q.answer, q.ansLang);
-    addXP(xpGot);
-  } else {
-    M.streak=0;
-    M.lives--;
-    S.wrong();
-    document.getElementById('qpanel').classList.add('shake');
-    setTimeout(()=>{const p=document.getElementById('qpanel'); if(p)p.classList.remove('shake');},420);
-    fb.innerHTML = `<span style="color:var(--bad)">❌ Richtig wäre: <b>${esc(q.answer)}</b></span>`;
-    updateHUD();
-    if(M.lives<=0){ setTimeout(()=>missionFailed(), 1300); return; }
-  }
-  updateHUD();
-  // weiter
-  setTimeout(()=>{ answered=false; M.qIndex++; renderQuestion(); }, correct?1000:1600);
-}
-
-function timeUp(q){
-  if(answered) return; answered=true;
+function chooseTimeUp(ans){
+  if(answered) return;
   document.querySelectorAll('#opts .opt').forEach(b=>{
-    if(b.textContent===q.answer) b.classList.add('correct'); else b.classList.add('dim');
+    if(b.textContent===ans) b.classList.add('correct'); else b.classList.add('dim');
     b.onclick=null;
   });
-  M.streak=0; M.lives--; S.wrong();
-  const fb=document.getElementById('fb');
-  fb.innerHTML = `<span style="color:var(--bad)">⏰ Zeit um! Richtig: <b>${esc(q.answer)}</b></span>`;
-  updateHUD();
-  if(M.lives<=0){ setTimeout(()=>missionFailed(),1300); return; }
-  setTimeout(()=>{ answered=false; M.qIndex++; renderQuestion(); }, 1600);
+  resolve(false, null, ans, false);
+}
+
+/* ============================================================
+   LERNMETHODE 1 — Schnellwahl (Multiple Choice)
+   ============================================================ */
+function renderChoose(task){
+  const v=byId(task.id), dir=task.dir;
+  const targetKey = dir==='en2de' ? 'de':'en';
+  const promptKey = dir==='en2de' ? 'en':'de';
+  const pool = shuffle(VOCAB.filter(x=>x.id!==task.id)).slice(0,3);
+  const options = shuffle([v[targetKey], ...pool.map(x=>x[targetKey])]);
+  const pf=LANGMETA[promptKey], af=LANGMETA[targetKey];
+  screen.innerHTML = `
+    <div class="center" style="max-width:580px">
+      ${taskHeader('🎯 Schnellwahl')}
+      <div id="timerWrap"><div id="timerBar"></div></div>
+      <div class="panel" id="qpanel">
+        <div class="qPrompt">${pf.flag} &nbsp;→&nbsp; ${af.flag}</div>
+        <div class="qWord">${esc(v[promptKey])} <button class="speakBtn" style="position:static;font-size:20px" id="qspeak">🔊</button></div>
+        <div class="qDir">Wähle die richtige Übersetzung:</div>
+        <div class="options" id="opts">
+          ${options.map((o,idx)=>`<button class="opt" data-i="${idx}">${esc(o)}</button>`).join('')}
+        </div>
+        <div class="feedback" id="fb"></div>
+      </div>
+    </div>`;
+  document.getElementById('qspeak').onclick=()=>speak(v[promptKey], pf.code);
+  document.querySelectorAll('#opts .opt').forEach(b=>{
+    b.onclick=()=>{
+      if(answered) return;
+      const ok = b.textContent===v[targetKey];
+      lockChoose(v[targetKey], b);
+      if(ok) speak(v[targetKey], af.code);
+      resolve(ok, b, v[targetKey], timeLeft>TIME_MAX*0.5);
+    };
+  });
+  startTimer(()=> chooseTimeUp(v[targetKey]));
+}
+
+/* ============================================================
+   LERNMETHODE 2 — Abhören (Listening)
+   ============================================================ */
+function renderListen(task){
+  const v=byId(task.id), heard=task.heardLang;
+  const optKey = heard==='en' ? 'de':'en';
+  const pool = shuffle(VOCAB.filter(x=>x.id!==task.id)).slice(0,3);
+  const options = shuffle([v[optKey], ...pool.map(x=>x[optKey])]);
+  const hm=LANGMETA[heard], af=LANGMETA[optKey];
+  screen.innerHTML = `
+    <div class="center" style="max-width:560px">
+      ${taskHeader('🎧 Abhören')}
+      <div id="timerWrap"><div id="timerBar"></div></div>
+      <div class="panel" id="qpanel">
+        <div class="qPrompt">🎧 Hör genau hin (${hm.short}) &nbsp;→&nbsp; wähle ${af.flag}</div>
+        <div class="listenBig">🎧</div>
+        <button class="btn alt" id="play">▶︎ Anruf abhören</button>
+        <div class="qDir" style="margin-top:14px">Was wurde gesagt?</div>
+        <div class="options" id="opts">
+          ${options.map((o,idx)=>`<button class="opt" data-i="${idx}">${esc(o)}</button>`).join('')}
+        </div>
+        <div class="feedback" id="fb"></div>
+      </div>
+    </div>`;
+  const sp=()=>{ speak(v[heard], hm.code); };
+  document.getElementById('play').onclick=sp;
+  setTimeout(sp, 350);
+  document.querySelectorAll('#opts .opt').forEach(b=>{
+    b.onclick=()=>{
+      if(answered) return;
+      const ok=b.textContent===v[optKey];
+      lockChoose(v[optKey], b);
+      if(ok) speak(v[optKey], af.code);
+      resolve(ok, b, v[optKey], timeLeft>TIME_MAX*0.5);
+    };
+  });
+  startTimer(()=> chooseTimeUp(v[optKey]));
+}
+
+/* ============================================================
+   LERNMETHODE 3 — Satz-Puzzle (Wörter/Buchstaben ordnen)
+   ============================================================ */
+function renderScramble(task){
+  const v=byId(task.id), produce=task.produce, other= produce==='en'?'de':'en';
+  const target=canonical(v[produce]);
+  const pf=LANGMETA[other], af=LANGMETA[produce];
+  const isPhrase=/\s/.test(target);
+  const tokens = isPhrase ? target.split(/\s+/) : target.split('');
+  let bank = shuffle(tokens.map((t,idx)=>({t,idx})));
+  if(tokens.length>1 && bank.map(o=>o.t).join('|')===tokens.join('|')) bank=shuffle(bank); // nicht schon gelöst starten
+  let chosen=[];
+  screen.innerHTML = `
+    <div class="center" style="max-width:580px">
+      ${taskHeader('🧩 Satz-Puzzle')}
+      <div class="panel">
+        <div class="qPrompt">${pf.flag} &nbsp;→&nbsp; ${af.flag}</div>
+        <div class="qWord" style="font-size:20px">${esc(v[other])} <button class="speakBtn" style="position:static;font-size:18px" id="psp">🔊</button></div>
+        <div class="qDir">Setze die ${isPhrase?'Wörter':'Buchstaben'} in die richtige Reihenfolge (${af.short}):</div>
+        <div class="answerLine" id="ans"></div>
+        <div class="chips" id="bank"></div>
+        <div class="rowBtns">
+          <button class="btn alt mini" id="reset">↺ Reset</button>
+          <button class="btn mini" id="check">✓ Prüfen</button>
+        </div>
+        <div class="feedback" id="fb"></div>
+      </div>
+    </div>`;
+  document.getElementById('psp').onclick=()=>speak(v[other], pf.code);
+  function draw(){
+    const ans=document.getElementById('ans'), bk=document.getElementById('bank');
+    ans.innerHTML = chosen.length
+      ? chosen.map((bi,pos)=>`<span class="chip in" data-pos="${pos}">${esc(bank[bi].t)}</span>`).join('')
+      : '<span class="ph">tippe unten die Bausteine an…</span>';
+    bk.innerHTML = bank.map((o,bi)=> chosen.includes(bi)?'':`<span class="chip" data-bi="${bi}">${esc(o.t)}</span>`).join('') || '<span class="ph">—</span>';
+    ans.querySelectorAll('.chip.in').forEach(ch=> ch.onclick=()=>{ if(answered)return; chosen.splice(+ch.dataset.pos,1); S.click(); draw(); });
+    bk.querySelectorAll('.chip').forEach(ch=> ch.onclick=()=>{ if(answered)return; chosen.push(+ch.dataset.bi); S.flip(); draw(); });
+  }
+  draw();
+  document.getElementById('reset').onclick=()=>{ if(answered)return; chosen=[]; S.click(); draw(); };
+  document.getElementById('check').onclick=()=>{
+    if(answered) return;
+    const assembled = chosen.map(bi=>bank[bi].t).join(isPhrase?' ':'');
+    const ok = norm(assembled)===norm(target);
+    if(ok) speak(target, af.code);
+    resolve(ok, document.getElementById('check'), target, false);
+  };
+}
+
+/* ============================================================
+   LERNMETHODE 4 — Funkspruch (Tippen)
+   ============================================================ */
+function renderType(task){
+  const v=byId(task.id), produce=task.produce, other= produce==='en'?'de':'en';
+  const pf=LANGMETA[other], af=LANGMETA[produce];
+  const target=v[produce];
+  const alts = target.split('/').map(s=>norm(s)).filter(Boolean);
+  const sol = canonical(target);
+  let hintN=0;
+  screen.innerHTML = `
+    <div class="center" style="max-width:560px">
+      ${taskHeader('⌨️ Funkspruch')}
+      <div class="panel">
+        <div class="qPrompt">${pf.flag} &nbsp;→&nbsp; ${af.flag}</div>
+        <div class="qWord" style="font-size:20px">${esc(v[other])} <button class="speakBtn" style="position:static;font-size:18px" id="psp">🔊</button></div>
+        <div class="qDir">Tippe die Übersetzung (${af.short}):</div>
+        <input class="tin" id="tin" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Antwort eingeben…" />
+        <div class="hintRow">
+          <button class="btn alt mini" id="hint">💡 Tipp</button>
+          <button class="btn ghost mini" id="give">🏳️ Auflösen</button>
+          <button class="btn mini" id="check">✓ Senden</button>
+        </div>
+        <div class="feedback" id="fb"></div>
+      </div>
+    </div>`;
+  const inp=document.getElementById('tin'); setTimeout(()=>{ try{inp.focus();}catch(e){} },60);
+  document.getElementById('psp').onclick=()=>speak(v[other], pf.code);
+  function check(){
+    if(answered) return;
+    const val=norm(inp.value);
+    if(!val){ try{inp.focus();}catch(e){} return; }
+    const ok = alts.some(a=> val===a || lev(val,a) <= (a.length<=6?1:2));
+    if(ok) speak(sol, af.code);
+    resolve(ok, document.getElementById('check'), sol, false);
+    inp.disabled=true;
+  }
+  document.getElementById('check').onclick=check;
+  inp.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); check(); } });
+  document.getElementById('hint').onclick=()=>{
+    if(answered) return;
+    hintN = Math.min(sol.length, hintN + (/\s/.test(sol)?2:1));
+    inp.value = sol.slice(0,hintN); try{inp.focus();}catch(e){} S.click();
+  };
+  document.getElementById('give').onclick=()=>{
+    if(answered) return;
+    resolve(false, document.getElementById('check'), sol, false);
+    inp.disabled=true;
+  };
+}
+
+/* ============================================================
+   LERNMETHODE 5 — Code-Memory (Paare finden)
+   ============================================================ */
+function renderMemory(task){
+  const ids=task.ids;
+  let cards=[];
+  ids.forEach(id=>{ cards.push({id,t:byId(id).en,l:'en'}); cards.push({id,t:byId(id).de,l:'de'}); });
+  cards=shuffle(cards);
+  let first=null, lock=false, matched=0;
+  screen.innerHTML = `
+    <div class="center" style="max-width:620px">
+      ${taskHeader('🧠 Code-Memory')}
+      <div class="qDir" style="text-align:center">Finde die ${ids.length} Paare: 🇬🇧 Englisch ↔ 🇩🇪 Deutsch.</div>
+      <div class="memGrid" id="mem">
+        ${cards.map((c,i)=>`<div class="memCard down" data-i="${i}">❓</div>`).join('')}
+      </div>
+      <div class="feedback" id="fb" style="text-align:center"></div>
+    </div>`;
+  const grid=document.getElementById('mem');
+  const elOf=i=>grid.querySelector('.memCard[data-i="'+i+'"]');
+  function reveal(i){ const el=elOf(i); el.classList.remove('down'); el.classList.add('face'); el.textContent=cards[i].t; }
+  function hide(i){ const el=elOf(i); el.classList.add('down'); el.classList.remove('face'); el.textContent='❓'; }
+  grid.querySelectorAll('.memCard').forEach(el=>{
+    el.onclick=()=>{
+      if(lock) return;
+      const i=+el.dataset.i;
+      if(el.classList.contains('matched')||el.classList.contains('face')) return;
+      reveal(i); S.flip();
+      if(first===null){ first=i; return; }
+      if(first!==i && cards[first].id===cards[i].id){
+        elOf(first).classList.add('matched'); el.classList.add('matched');
+        first=null; matched++;
+        registerCorrect(el, false);
+        const fb=document.getElementById('fb'); if(fb) fb.innerHTML=`<span style="color:var(--good)">✅ Paar gefunden! (${matched}/${ids.length})</span>`;
+        if(matched===ids.length){ S.win(); burst(innerWidth/2, innerHeight*0.4, 60); advance(900); }
+      } else {
+        lock=true; const fi=first; first=null;
+        M.streak=0; S.wrong(); updateHUD();
+        const fb=document.getElementById('fb'); if(fb) fb.innerHTML=`<span style="color:var(--bad)">❌ Kein Paar</span>`;
+        setTimeout(()=>{ hide(fi); hide(i); lock=false; }, 750);
+      }
+    };
+  });
+}
+
+/* ============================================================
+   TRAINING-ENGINE (freies Üben)
+   ============================================================ */
+function startTraining(method){
+  M = { training:true, method, lives:1, maxLives:1, streak:0, correct:0, solved:0, mistakes:0, m:null };
+  hud.style.display='flex'; updateHUD();
+  trainNext();
+}
+function trainNext(){
+  if(!M) return;
+  const id = shuffle(VOCAB)[0].id;
+  let task;
+  switch(M.method){
+    case 'choose':   task={method:'choose', id, dir: Math.random()<.5?'en2de':'de2en'}; break;
+    case 'listen':   task={method:'listen', id, heardLang: Math.random()<.5?'en':'de'}; break;
+    case 'scramble': task={method:'scramble', id, produce: Math.random()<.5?'en':'de'}; break;
+    case 'type':     task={method:'type', id, produce: Math.random()<.5?'de':'en'}; break;
+    case 'memory':   task={method:'memory', ids: shuffle(VOCAB).slice(0,6).map(v=>v.id)}; break;
+    default:         task={method:'choose', id, dir:'en2de'};
+  }
+  renderTask(task);
+}
+
+/* ============================================================
+   ABSCHLUSS-SCREENS
+   ============================================================ */
+function missionDebrief(){
+  clearInterval(timerInt);
+  showDialogue(M.m.outro, ()=> missionComplete());
 }
 
 function missionComplete(){
   clearInterval(timerInt);
-  const i=M.missionIndex;
-  const last = i===MISSIONS.length-1;
-  // Mission gemeistert -> nächste freischalten
+  const i=M.i, last=i===MISSIONS.length-1;
   if(i+1>=G.unlocked && !last) G.unlocked=i+2;
-  if(last && G.unlocked<=MISSIONS.length) G.unlocked=MISSIONS.length+1; // alles durch
-  saveGame();
-  S.win(); burst(innerWidth/2, innerHeight*0.4, 70);
-  const pct = Math.round((M.correct/M.total)*100);
+  if(last) G.unlocked=Math.max(G.unlocked, MISSIONS.length+1);
+  if(M.m.badge && !G.badges.includes(M.m.badge)) G.badges.push(M.m.badge);
+  const pct = Math.round((M.correct/Math.max(1,M.total))*100);
   const stars = pct>=90?'⭐⭐⭐':pct>=70?'⭐⭐':'⭐';
+  const bonus = 40 + i*20; G.coins += bonus;
+  saveGame();
+  S.win(); burst(innerWidth/2, innerHeight*0.35, 80);
+  const earnedBadge = M.m.badge;
   screen.innerHTML = `
     <div class="center">
       <div style="font-size:60px" class="pulse">${last?'🏆':'🎉'}</div>
-      <h1 class="title" style="font-size:28px">${last?'MISSION ABGESCHLOSSEN!':'Mission gemeistert!'}</h1>
+      <h1 class="title" style="font-size:28px">${last?'OPERATION GESCHAFFT!':'Mission gemeistert!'}</h1>
       <div class="panel">
         <div class="ranklabel">${stars}</div>
         <div class="statRow">
-          <div class="stat"><b>${M.correct}/${M.total}</b><small>richtig</small></div>
+          <div class="stat"><b>${M.correct}/${M.total}</b><small>gelöst</small></div>
           <div class="stat"><b>${pct}%</b><small>Trefferquote</small></div>
           <div class="stat"><b>🔥 ${G.bestStreak}</b><small>beste Combo</small></div>
         </div>
+        <div class="badgeRow"><span class="bChip">🏅 ${esc(earnedBadge)}</span><span class="bChip">+${bonus} 🪙 Bonus</span></div>
         <p class="story" style="text-align:center">${last
-          ? 'Der Doppelagent ist enttarnt! Du beherrschst alle 22 Telefon-Codes. Rang: <b style="color:var(--gold)">'+rankFor(G.level)+'</b> 🕵️'
+          ? 'Der Schakal ist enttarnt! Du beherrschst alle 22 Telefon-Codes. Rang: <b style="color:var(--gold)">'+rankFor(G.level)+'</b> 🕵️'
           : 'Nächste Mission freigeschaltet! Weiter so, Agent.'}</p>
-        ${last?'<button class="btn" id="againBtn">🔁 Nochmal alles spielen</button>':'<button class="btn" id="nextBtn">➡️ Nächste Mission</button>'}
+        ${last
+          ? '<button class="btn" id="trainBtn">🎯 Weiter trainieren</button>'
+          : '<button class="btn" id="nextBtn">➡️ Nächste Mission</button>'}
         <button class="btn ghost" id="mapBtn">🗺️ Zur Missions-Karte</button>
       </div>
     </div>`;
+  M=null;
   if(last){
-    document.getElementById('againBtn').onclick=()=>{ S.click(); showBriefing(0); };
+    document.getElementById('trainBtn').onclick=()=>{ S.click(); showTraining(); };
   } else {
     document.getElementById('nextBtn').onclick=()=>{ S.click(); showBriefing(i+1); };
   }
@@ -565,28 +1103,25 @@ function missionComplete(){
 }
 
 function missionFailed(){
-  clearInterval(timerInt);
-  S.fail();
-  const i=M.missionIndex;
+  clearInterval(timerInt); S.fail();
+  const i=M.i, correct=M.correct;
+  M=null;
   screen.innerHTML = `
     <div class="center">
       <div style="font-size:60px">📵</div>
       <h1 class="title" style="font-size:26px">Verbindung verloren!</h1>
       <div class="panel">
         <p class="story" style="text-align:center">Keine Leben mehr – aber jede*r gute Agent*in versucht es nochmal.
-        Du hattest <b>${M.correct}</b> richtige Anrufe. Schau dir im Briefing kurz die Codes an und schlag erneut zu!</p>
+        Du hattest <b>${correct}</b> richtige Anrufe. Schau dir kurz das Briefing an und schlag erneut zu!</p>
         <button class="btn" id="retryBtn">🔁 Mission wiederholen</button>
         <button class="btn ghost" id="briefBtn">🃏 Erst Briefing ansehen</button>
         <button class="btn ghost" id="mapBtn">🗺️ Zur Missions-Karte</button>
       </div>
     </div>`;
   document.getElementById('retryBtn').onclick=()=>{ S.click(); startMission(i); };
-  document.getElementById('briefBtn').onclick=()=>{ S.click(); showBriefing(i); };
+  document.getElementById('briefBtn').onclick=()=>{ S.click(); showFlashcards(i); };
   document.getElementById('mapBtn').onclick=()=>{ S.click(); showMap(); };
 }
-
-/* ---------- util ---------- */
-function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
 /* ---------- los ---------- */
 updateHUD();
