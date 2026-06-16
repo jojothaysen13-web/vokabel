@@ -188,6 +188,17 @@
   .stat small{color:var(--muted);}
   .ranklabel{font-size:24px;font-weight:900;color:var(--gold);margin:6px 0;}
 
+  /* Fortschritt (SRS) */
+  .mstat{margin:10px 0 16px;}
+  .mrow{display:flex;align-items:center;gap:10px;text-align:left;background:var(--card);
+    border:1px solid var(--cardbr);border-radius:12px;padding:10px 12px;margin-bottom:8px;}
+  .mrow .memo{font-size:18px;flex:none;}
+  .mrow .minfo{flex:1;min-width:0;}
+  .mrow .minfo b{font-size:14px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .mrow .minfo small{color:var(--muted);font-size:11px;}
+  .mbar{height:7px;background:rgba(255,255,255,.12);border-radius:999px;overflow:hidden;margin-top:6px;}
+  .mfill{height:100%;background:linear-gradient(90deg,var(--neon),var(--neon2));border-radius:999px;transition:width .5s;}
+
   .footnote{color:var(--muted);font-size:12px;margin-top:14px;}
   .pulse{animation:pulse 1.6s infinite;}
   @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
@@ -342,12 +353,17 @@ const LANGMETA = {
 const SAVE_KEY = "agentphone_save_v2";
 let G = loadGame();
 function defaultGame(){
-  return { unlocked:1, coins:0, level:1, xp:0, bestStreak:0, badges:[] };
+  return { unlocked:1, coins:0, level:1, xp:0, bestStreak:0, badges:[], cards:{}, reviews:0 };
 }
 function loadGame(){
   try{
     const s = JSON.parse(localStorage.getItem(SAVE_KEY));
-    if(s && s.unlocked){ if(!Array.isArray(s.badges)) s.badges=[]; return s; }
+    if(s && s.unlocked){
+      if(!Array.isArray(s.badges)) s.badges=[];
+      if(!s.cards || typeof s.cards!=='object') s.cards={}; // SRS-Speicher nachrüsten
+      if(typeof s.reviews!=='number') s.reviews=0;
+      return s;
+    }
     return defaultGame();
   }catch(e){ return defaultGame(); }
 }
@@ -387,6 +403,98 @@ function lev(a,b){
     d[i][j]=Math.min(d[i-1][j]+1, d[i][j-1]+1, d[i-1][j-1]+c);
   }
   return d[m][n];
+}
+
+/* ============================================================
+   FSRS — Spaced Repetition Scheduler (FSRS-5, kompakt)
+   Merkt sich pro Vokabel, wie gut sie sitzt, und bringt
+   schwache Codes gezielt zurück. Karte: {s,d,due,reps,lapses,last}
+   ============================================================ */
+const FSRS_W = [0.40255,1.18385,3.173,15.69105,7.1949,0.5345,1.4604,0.0046,
+  1.54575,0.1192,1.01925,1.9395,0.11,0.29605,2.2698,0.2315,2.9898,0.51655,0.6621];
+const FSRS_DECAY = -0.5;
+const FSRS_FACTOR = Math.pow(0.9, 1/FSRS_DECAY) - 1; // = 19/81
+const TARGET_R = 0.9;        // Ziel-Behaltensrate
+const DAY = 86400000;
+
+function clampD(d){ return Math.min(10, Math.max(1, d)); }
+function initD(g){ return clampD(FSRS_W[4] - Math.exp(FSRS_W[5]*(g-1)) + 1); }
+function initS(g){ return Math.max(0.1, FSRS_W[g-1]); }
+function retr(s, elapsedDays){ return Math.pow(1 + FSRS_FACTOR*elapsedDays/s, FSRS_DECAY); }
+function intervalDays(s){ return Math.max(1, Math.round(s/FSRS_FACTOR*(Math.pow(TARGET_R,1/FSRS_DECAY)-1))); }
+function nextS_recall(d, s, r, g){
+  const hard = g===2 ? FSRS_W[15] : 1;
+  const easy = g===4 ? FSRS_W[16] : 1;
+  return s * (1 + Math.exp(FSRS_W[8])*(11-d)*Math.pow(s,-FSRS_W[9])*(Math.exp(FSRS_W[10]*(1-r))-1)*hard*easy);
+}
+function nextS_lapse(d, s, r){
+  return Math.min(s, FSRS_W[11]*Math.pow(d,-FSRS_W[12])*(Math.pow(s+1,FSRS_W[13])-1)*Math.exp(FSRS_W[14]*(1-r)));
+}
+function nextD(d, g){
+  const dp = d + (-FSRS_W[6]*(g-3))*(10-d)/9;            // lineare Dämpfung
+  return clampD(FSRS_W[7]*initD(4) + (1-FSRS_W[7])*dp);  // Mittelwert-Rückkehr
+}
+/* Ergebnis einer Vokabel einbuchen. correct/fast -> FSRS-Bewertung g */
+function recordReview(id, correct, fast){
+  if(id==null) return;
+  const now = Date.now();
+  const g = !correct ? 1 : (fast ? 4 : 3);   // 1=Again, 3=Good, 4=Easy
+  let c = G.cards[id];
+  if(!c){
+    c = { s:initS(g), d:initD(g), due:0, reps:0, lapses:correct?0:1, last:now };
+  } else {
+    const elapsed = Math.max(0,(now-(c.last||now))/DAY);
+    const r = retr(c.s, elapsed);
+    if(correct){ c.s = nextS_recall(c.d, c.s, r, g); }
+    else { c.lapses++; c.s = nextS_lapse(c.d, c.s, r); }
+    c.d = nextD(c.d, g);
+  }
+  c.s = Math.max(0.1, c.s);
+  c.reps++; c.last = now; c.due = now + intervalDays(c.s)*DAY;
+  G.cards[id] = c; G.reviews++;
+  saveGame();
+}
+/* Auswahl-Score: neu & schwach & überfällig -> hoch */
+function cardScore(id, now){
+  const c = G.cards[id];
+  if(!c) return 1.0;
+  const elapsed = Math.max(0,(now-c.last)/DAY);
+  let score = 1 - retr(c.s, elapsed);
+  if(c.due && now>=c.due) score += 0.3;
+  if(c.lapses) score += 0.1*Math.min(3,c.lapses);
+  return Math.max(0.02, score);
+}
+/* Gewichtete Zufallsauswahl (mehr Varianz dank ^1.5) */
+function pickReviewId(pool, lastId){
+  pool = pool || VOCAB.map(v=>v.id);
+  const now = Date.now();
+  let cand = pool.filter(id=>id!==lastId);
+  if(!cand.length) cand = pool.slice();
+  const w = cand.map(id=>Math.pow(cardScore(id,now),1.5));
+  let roll = Math.random()*w.reduce((a,b)=>a+b,0);
+  for(let i=0;i<cand.length;i++){ roll-=w[i]; if(roll<=0) return cand[i]; }
+  return cand[cand.length-1];
+}
+/* Pool der fälligen/schwachen Codes (für Schwächen-Training) */
+function weakPool(){
+  const now=Date.now();
+  return VOCAB.map(v=>v.id).filter(id=>{
+    const c=G.cards[id]; if(!c) return false;
+    const elapsed=Math.max(0,(now-c.last)/DAY);
+    return c.lapses>0 || (c.due && c.due<=now) || retr(c.s,elapsed)<0.9;
+  });
+}
+/* Anzeige-Helfer */
+function masteryPct(id){
+  const c=G.cards[id]; if(!c) return 0;
+  return Math.round(100*Math.min(1, Math.log(1+c.s)/Math.log(1+30))); // 30 Tage Stabilität ~ 100%
+}
+function masteryTag(id){
+  const c=G.cards[id]; if(!c) return {emo:'⚪', label:'neu'};
+  if(c.s<1)  return {emo:'🔴', label:'frisch'};
+  if(c.s<4)  return {emo:'🟠', label:'am Lernen'};
+  if(c.s<16) return {emo:'🟡', label:'sitzt'};
+  return {emo:'🟢', label:'gemeistert'};
 }
 
 /* ---------- Sound (Web Audio, ohne Dateien) ---------- */
@@ -599,8 +707,10 @@ function showMap(){
           <div class="missionState">∞</div>
         </div>
       </div>
-      <button class="btn ghost" id="homeBtn" style="margin-top:16px">← Startbildschirm</button>
+      <button class="btn ghost" id="progBtn" style="margin-top:16px">📊 Code-Fortschritt</button>
+      <button class="btn ghost" id="homeBtn" style="margin-top:8px">← Startbildschirm</button>
     </div>`;
+  document.getElementById('progBtn').onclick=()=>{ S.click(); showProgress(); };
   document.querySelectorAll('.missionCard[data-i]').forEach(c=>{
     c.onclick=()=>{
       const i=+c.dataset.i;
@@ -616,6 +726,14 @@ function showTraining(){
   M=null; dlg=null; hud.style.display='flex'; clearInterval(timerInt); updateHUD();
   elMissionChip.textContent = '🎯 Trainingslager';
   const methods=['choose','listen','scramble','type','memory'];
+  const weak = weakPool().length;
+  const reviewCard = `
+    <div class="missionCard train" data-m="review">
+      <div class="missionEmoji">🩺</div>
+      <div class="missionInfo"><b>Schwächen-Training</b>
+        <small>${weak?weak+' fällige/schwache Codes':'gemischte Methoden, SRS-gesteuert'} · bringt zurück, was wackelt</small></div>
+      <div class="missionState">${weak||'∞'}</div>
+    </div>`;
   const cards = methods.map(x=>`
     <div class="missionCard" data-m="${x}">
       <div class="missionEmoji">${METHOD_INFO[x].icon}</div>
@@ -625,13 +743,48 @@ function showTraining(){
   screen.innerHTML = `
     <div class="center">
       <h1 class="title" style="font-size:24px">🎯 Trainingslager</h1>
-      <p class="subtitle">Üben ohne Druck – keine Leben, alle 22 Codes. Wähle deine Methode:</p>
-      <div class="missionList">${cards}</div>
-      <button class="btn ghost" id="back" style="margin-top:16px">← Zurück zur Karte</button>
+      <p class="subtitle">Üben ohne Druck – keine Leben, alle 22 Codes. Schwache Codes kommen dank Spaced Repetition öfter dran.</p>
+      <div class="missionList">${reviewCard}${cards}</div>
+      <button class="btn ghost" id="progBtn" style="margin-top:16px">📊 Fortschritt ansehen</button>
+      <button class="btn ghost" id="back" style="margin-top:8px">← Zurück zur Karte</button>
     </div>`;
   document.querySelectorAll('.missionCard[data-m]').forEach(c=>{
     c.onclick=()=>{ audio(); S.click(); startTraining(c.dataset.m); };
   });
+  document.getElementById('progBtn').onclick=()=>{ S.click(); showProgress(); };
+  document.getElementById('back').onclick=()=>{ S.click(); showMap(); };
+}
+
+function showProgress(){
+  M=null; dlg=null; hud.style.display='flex'; clearInterval(timerInt); updateHUD();
+  elMissionChip.textContent = '📊 Fortschritt';
+  const now=Date.now();
+  const seen     = VOCAB.filter(v=>G.cards[v.id]).length;
+  const mastered = VOCAB.filter(v=>{const c=G.cards[v.id];return c&&c.s>=16;}).length;
+  const due      = VOCAB.filter(v=>{const c=G.cards[v.id];return c&&c.due&&c.due<=now;}).length;
+  const rows = VOCAB.slice().sort((a,b)=>cardScore(b.id,now)-cardScore(a.id,now)).map(v=>{
+    const t=masteryTag(v.id), p=masteryPct(v.id), c=G.cards[v.id];
+    const meta = c ? `${t.label} · ${c.reps}× geübt${c.lapses?' · '+c.lapses+' Fehler':''}` : 'noch nicht geübt';
+    return `<div class="mrow">
+      <div class="memo">${t.emo}</div>
+      <div class="minfo"><b>${esc(v.en)}</b><small>${esc(v.de)} — ${meta}</small>
+        <div class="mbar"><div class="mfill" style="width:${p}%"></div></div></div>
+    </div>`;
+  }).join('');
+  screen.innerHTML = `
+    <div class="center">
+      <h1 class="title" style="font-size:24px">📊 Code-Fortschritt</h1>
+      <p class="subtitle">Spaced Repetition merkt sich, was sitzt – und bringt Schwaches gezielt zurück.</p>
+      <div class="statRow mstat">
+        <div class="stat"><b>${mastered}/${VOCAB.length}</b><small>gemeistert</small></div>
+        <div class="stat"><b>${seen}</b><small>angefangen</small></div>
+        <div class="stat"><b>${due}</b><small>fällig 🔁</small></div>
+      </div>
+      <button class="btn" id="revBtn">🩺 ${due>0?(due+' fällige Codes üben'):'Schwächen-Training'}</button>
+      ${rows}
+      <button class="btn ghost" id="back" style="margin-top:14px">← Zurück</button>
+    </div>`;
+  document.getElementById('revBtn').onclick=()=>{ audio(); S.click(); startTraining('review'); };
   document.getElementById('back').onclick=()=>{ S.click(); showMap(); };
 }
 
@@ -716,6 +869,7 @@ function nextTask(){
 
 function renderTask(task){
   clearInterval(timerInt); answered=false; updateHUD();
+  M.curId = task.id; M.curMethod = task.method;   // für SRS-Buchung
   if(task.method==='choose')        renderChoose(task);
   else if(task.method==='listen')   renderListen(task);
   else if(task.method==='scramble') renderScramble(task);
@@ -752,6 +906,7 @@ function registerWrong(){
 /* Ergebnis verarbeiten (für choose/listen/scramble/type) */
 function resolve(correct, anchorEl, answerText, fast){
   if(answered) return; answered=true; clearInterval(timerInt);
+  if(M && M.curMethod!=='memory') recordReview(M.curId, correct, fast);
   const fb=document.getElementById('fb');
   if(correct){
     const r=registerCorrect(anchorEl, fast);
@@ -1016,6 +1171,7 @@ function renderMemory(task){
       if(first!==i && cards[first].id===cards[i].id){
         elOf(first).classList.add('matched'); el.classList.add('matched');
         first=null; matched++;
+        recordReview(cards[i].id, true, false);
         registerCorrect(el, false);
         const fb=document.getElementById('fb'); if(fb) fb.innerHTML=`<span style="color:var(--good)">✅ Paar gefunden! (${matched}/${ids.length})</span>`;
         if(matched===ids.length){ S.win(); burst(innerWidth/2, innerHeight*0.4, 60); advance(900); }
@@ -1033,21 +1189,36 @@ function renderMemory(task){
    TRAINING-ENGINE (freies Üben)
    ============================================================ */
 function startTraining(method){
-  M = { training:true, method, lives:1, maxLives:1, streak:0, correct:0, solved:0, mistakes:0, m:null };
+  M = { training:true, method, lives:1, maxLives:1, streak:0, correct:0, solved:0, mistakes:0, m:null, lastId:null };
   hud.style.display='flex'; updateHUD();
   trainNext();
 }
+/* Memory-Karten: bevorzugt die schwächsten Codes */
+function pickMemoryIds(n){
+  const now=Date.now();
+  const sorted = VOCAB.map(v=>v.id).sort((a,b)=>cardScore(b,now)-cardScore(a,now));
+  return shuffle(sorted.slice(0, Math.min(VOCAB.length, n+2))).slice(0,n);
+}
 function trainNext(){
   if(!M) return;
-  const id = shuffle(VOCAB)[0].id;
+  let method = M.method;
+  let pool = null;                               // null = alle Codes (SRS-gewichtet)
+  if(method==='review'){                          // 🩺 gemischte Methoden, schwache Codes
+    pool = weakPool(); if(pool.length<3) pool = VOCAB.map(v=>v.id);
+    method = shuffle(['choose','listen','scramble','type'])[0];
+  }
   let task;
-  switch(M.method){
-    case 'choose':   task={method:'choose', id, dir: Math.random()<.5?'en2de':'de2en'}; break;
-    case 'listen':   task={method:'listen', id, heardLang: Math.random()<.5?'en':'de'}; break;
-    case 'scramble': task={method:'scramble', id, produce: Math.random()<.5?'en':'de'}; break;
-    case 'type':     task={method:'type', id, produce: Math.random()<.5?'de':'en'}; break;
-    case 'memory':   task={method:'memory', ids: shuffle(VOCAB).slice(0,6).map(v=>v.id)}; break;
-    default:         task={method:'choose', id, dir:'en2de'};
+  if(method==='memory'){
+    task = {method:'memory', ids: pickMemoryIds(6)};
+  } else {
+    const id = pickReviewId(pool, M.lastId); M.lastId = id;
+    switch(method){
+      case 'choose':   task={method:'choose', id, dir: Math.random()<.5?'en2de':'de2en'}; break;
+      case 'listen':   task={method:'listen', id, heardLang: Math.random()<.5?'en':'de'}; break;
+      case 'scramble': task={method:'scramble', id, produce: Math.random()<.5?'en':'de'}; break;
+      case 'type':     task={method:'type', id, produce: Math.random()<.5?'de':'en'}; break;
+      default:         task={method:'choose', id, dir:'en2de'};
+    }
   }
   renderTask(task);
 }

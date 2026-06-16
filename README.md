@@ -54,6 +54,19 @@ Ein eigener **Übungsmodus ohne Druck**: Wähle eine beliebige Methode und übe 
 22 Codes endlos – keine Leben, keine Niederlage, nur Wiederholung. Perfekt zum
 gezielten Lernen.
 
+## 🧠 Spaced Repetition (FSRS) — lernt mit dir mit
+
+Das Spiel **merkt sich pro Vokabel, wie gut sie sitzt** (FSRS-5-Scheduler) und
+bringt schwache Codes gezielt häufiger zurück – statt rein zufällig abzufragen.
+
+- 🩺 **Schwächen-Training** – ein Modus, der genau die fälligen & wackeligen Codes
+  übt, mit gemischten Methoden.
+- 📊 **Code-Fortschritt** – eine Übersicht aller 22 Codes mit Mastery-Balken
+  (⚪ neu · 🔴 frisch · 🟠 am Lernen · 🟡 sitzt · 🟢 gemeistert), Anzahl
+  Wiederholungen und Fehlern.
+- ⚖️ Jede Antwort fließt ein – ob in einer Mission oder im Training: richtig &
+  schnell verlängert den Wiederhol-Abstand, falsch holt den Code bald zurück.
+
 ## ✨ Was es ADHS-freundlich macht
 
 - ⚡ **Sofortiges Feedback** – grüner Blitz, Konfetti & Sound bei richtig
@@ -63,6 +76,7 @@ gezielten Lernen.
 - 🃏 Kurzes **Karten-Briefing** vor jeder Mission
 - 🔊 **Aussprache** auf Knopfdruck (Browser spricht EN & DE vor)
 - 🏅 **Abzeichen** für jede gemeisterte Mission + Rang-Aufstieg
+- 🧠 **Spaced Repetition** – schwache Codes kommen automatisch öfter dran
 - 💾 Fortschritt wird automatisch gespeichert
 
 ## 📚 Enthaltene Vokabeln
