@@ -211,6 +211,7 @@
 <div id="app">
   <header id="hud">
     <span class="hud-chip" id="missionChip">☎️ ECHO</span>
+    <span class="hud-chip" id="skinChip" title="Dein Agenten-Look">🕵️</span>
     <span class="hud-chip">Lvl <span id="lvl">1</span></span>
     <div id="xpwrap"><div id="xpbar"></div><div id="xptxt"></div></div>
     <span class="hud-chip"><span class="hearts" id="hearts">❤️❤️❤️</span></span>
@@ -349,11 +350,38 @@ const LANGMETA = {
   de:{flag:"🇩🇪 Deutsch",  code:"de-DE", short:"DE"},
 };
 
+/* ---------- Shop: Verbrauchsgegenstände & Skins ---------- */
+const SHOP_ITEMS = [
+  {id:'life',  type:'consumable', key:'life',  icon:'🛟', name:'Rettungsanker', desc:'Rettet dich automatisch, wenn dir die Leben ausgehen', price:60},
+  {id:'joker', type:'consumable', key:'joker', icon:'🃏', name:'Joker',         desc:'Streicht 2 falsche Antworten bei Schnellwahl & Abhören', price:40},
+  {id:'skin_ninja',   type:'skin', emoji:'🥷', icon:'🥷', name:'Ninja-Agent',    price:80},
+  {id:'skin_robot',   type:'skin', emoji:'🤖', icon:'🤖', name:'Roboter-Agent',  price:80},
+  {id:'skin_hero',    type:'skin', emoji:'🦸', icon:'🦸', name:'Superheld',      price:120},
+  {id:'skin_alien',   type:'skin', emoji:'👾', icon:'👾', name:'Alien-Agent',    price:120},
+  {id:'skin_villain', type:'skin', emoji:'🦹', icon:'🦹', name:'Anti-Held',      price:150},
+];
+
+/* ---------- Erfolge (Achievements) ---------- */
+const ACHIEVEMENTS = [
+  {id:'streak10',   icon:'🔥', name:'Streak-Profi',     desc:'Erreiche eine Combo von 10',            reward:30,  check:g=>g.bestStreak>=10},
+  {id:'streak20',   icon:'⚡', name:'Combo-Legende',    desc:'Erreiche eine Combo von 20',            reward:60,  check:g=>g.bestStreak>=20},
+  {id:'perfect1',   icon:'💯', name:'Perfektionist',    desc:'Schließe eine Mission ohne Fehler ab',  reward:40,  check:g=>g.perfectMissions.length>=1},
+  {id:'perfectAll', icon:'🌟', name:'Makellos',         desc:'Alle Missionen ohne Fehler abschließen',reward:100, check:g=>g.perfectMissions.length>=MISSIONS.length},
+  {id:'login3',     icon:'📅', name:'Drei Tage dran',   desc:'3 Tage in Folge gespielt',              reward:25,  check:g=>g.loginStreak>=3},
+  {id:'login7',     icon:'🗓️', name:'Wochen-Agent',     desc:'7 Tage in Folge gespielt',              reward:75,  check:g=>g.loginStreak>=7},
+  {id:'masterAll',  icon:'🧠', name:'Meister-Gedächtnis',desc:'Alle 22 Codes gemeistert',              reward:120, check:g=>VOCAB.every(v=>{const c=g.cards[v.id];return c&&c.s>=16;})},
+  {id:'grinder',    icon:'🎓', name:'Vielspieler',      desc:'200 Wiederholungen geschafft',          reward:50,  check:g=>g.reviews>=200},
+  {id:'richAgent',  icon:'🪙', name:'Sparschwein',      desc:'Insgesamt 500 Münzen verdient',         reward:30,  check:g=>g.totalCoinsEarned>=500},
+];
+
 /* ---------- Spielzustand ---------- */
 const SAVE_KEY = "agentphone_save_v2";
 let G = loadGame();
 function defaultGame(){
-  return { unlocked:1, coins:0, level:1, xp:0, bestStreak:0, badges:[], cards:{}, reviews:0, custom:[] };
+  return { unlocked:1, coins:0, level:1, xp:0, bestStreak:0, badges:[], cards:{}, reviews:0, custom:[],
+    totalCoinsEarned:0, achievements:[], perfectMissions:[],
+    lastLoginDate:null, loginStreak:0, longestLoginStreak:0,
+    inv:{life:0, joker:0}, skins:['🕵️'], skin:'🕵️' };
 }
 function loadGame(){
   try{
@@ -363,6 +391,15 @@ function loadGame(){
       if(!s.cards || typeof s.cards!=='object') s.cards={}; // SRS-Speicher nachrüsten
       if(typeof s.reviews!=='number') s.reviews=0;
       if(!Array.isArray(s.custom)) s.custom=[]; // eigene Vokabelliste nachrüsten
+      if(typeof s.totalCoinsEarned!=='number') s.totalCoinsEarned=s.coins||0;
+      if(!Array.isArray(s.achievements)) s.achievements=[];
+      if(!Array.isArray(s.perfectMissions)) s.perfectMissions=[];
+      if(typeof s.lastLoginDate!=='string') s.lastLoginDate=null;
+      if(typeof s.loginStreak!=='number') s.loginStreak=0;
+      if(typeof s.longestLoginStreak!=='number') s.longestLoginStreak=0;
+      if(!s.inv || typeof s.inv!=='object') s.inv={life:0, joker:0};
+      if(!Array.isArray(s.skins)) s.skins=['🕵️'];
+      if(typeof s.skin!=='string') s.skin='🕵️';
       return s;
     }
     return defaultGame();
@@ -386,6 +423,7 @@ const elHearts = document.getElementById('hearts');
 const elCoins = document.getElementById('coins');
 const elStreak = document.getElementById('streak');
 const elMissionChip = document.getElementById('missionChip');
+const elSkinChip = document.getElementById('skinChip');
 const elCombo = document.getElementById('combo');
 
 /* ---------- Helpers ---------- */
@@ -501,6 +539,40 @@ function masteryTag(id){
   return {emo:'🟢', label:'gemeistert'};
 }
 
+/* ============================================================
+   ERFOLGE & TAGES-BONUS (Bindung & Wiederkehr)
+   ============================================================ */
+function awardCoins(n){ G.coins += n; G.totalCoinsEarned += n; }
+/* Prüft alle Erfolge, schaltet neue frei (Coins + Toast) */
+function checkAchievements(){
+  let any=false;
+  ACHIEVEMENTS.forEach(a=>{
+    if(!G.achievements.includes(a.id) && a.check(G)){
+      G.achievements.push(a.id); awardCoins(a.reward); any=true;
+      showCombo(a.icon+' Erfolg: '+a.name+'!');
+      S.levelup(); burst(innerWidth/2, innerHeight*0.3, 40);
+    }
+  });
+  if(any) saveGame();
+}
+function todayStr(d){ d=d||new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+let dailyReward = null;
+/* Einmal pro Kalendertag: Streak fortführen/zurücksetzen & Bonus gutschreiben */
+function claimDailyLogin(){
+  const today = todayStr();
+  if(G.lastLoginDate === today) return;
+  const yesterday = todayStr(new Date(Date.now()-DAY));
+  G.loginStreak = (G.lastLoginDate===yesterday) ? G.loginStreak+1 : 1;
+  G.longestLoginStreak = Math.max(G.longestLoginStreak||0, G.loginStreak);
+  G.lastLoginDate = today;
+  const cycleDay = ((G.loginStreak-1)%7)+1; // 1..7, wiederholt sich
+  const coins = 10 + cycleDay*8;
+  awardCoins(coins);
+  saveGame();
+  dailyReward = {streak:G.loginStreak, cycleDay, coins};
+  checkAchievements();
+}
+
 /* ---------- Sound (Web Audio, ohne Dateien) ---------- */
 let soundOn = true, actx=null;
 function audio(){ if(!actx){ try{ actx = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } return actx; }
@@ -569,6 +641,7 @@ function updateHUD(){
   elXpBar.style.width = Math.min(100,(G.xp/need)*100)+'%';
   elXpTxt.textContent = G.xp+' / '+need+' XP';
   elCoins.textContent = G.coins;
+  elSkinChip.textContent = G.skin;
   if(M){
     if(M.training){ elHearts.textContent = '♾️'; }
     else elHearts.textContent = '❤️'.repeat(Math.max(0,M.lives)) + '🖤'.repeat(Math.max(0,M.maxLives-M.lives));
@@ -646,6 +719,7 @@ function finishType(){
    SCREENS: Start / Karte / Training / Briefing
    ============================================================ */
 function showStart(){
+  if(dailyReward){ showDailyRewardScreen(); return; }
   M=null; dlg=null; hud.style.display='none'; clearInterval(timerInt);
   const seenBadges = G.badges.length ? `<div class="badgeRow">${G.badges.map(b=>`<span class="bChip">${esc(b)}</span>`).join('')}</div>` : '';
   screen.innerHTML = `
@@ -658,6 +732,7 @@ function showStart(){
         <p class="story">Ein Maulwurf verrät unsere Geheimnisse – am Telefon. Tritt der <b>ECHO-Agentur</b> bei,
         meistere die englischen Telefon-Codes und enttarne <b style="color:var(--accent)">den Schakal</b> 🦊.</p>
         <div class="castRow">
+          <div class="cast"><div class="castEmo">${G.skin}</div><span>Du</span></div>
           <div class="cast"><div class="castEmo">🕶️</div><span>Direktorin<br>Sturm</span></div>
           <div class="cast"><div class="castEmo">🤓</div><span>Wendell<br>«Q»</span></div>
           <div class="cast"><div class="castEmo">💁‍♀️</div><span>Mia</span></div>
@@ -668,10 +743,13 @@ function showStart(){
           <span class="mpill">🧩 Satz-Puzzle</span><span class="mpill">⌨️ Funkspruch</span>
           <span class="mpill">🧠 Memory</span>
         </div>
+        ${G.loginStreak>1 ? `<p class="subtitle" style="margin:4px 0">🔥 ${G.loginStreak} Tage Streak · 🪙 ${G.coins}</p>` : ''}
         ${seenBadges}
         <button class="btn" id="playBtn">▶︎ Mission starten</button>
         <button class="btn alt" id="trainBtn">🎯 Freies Training</button>
         <button class="btn alt" id="customBtn">📝 Eigene Vokabeln${G.custom.length?' ('+G.custom.length+')':''}</button>
+        <button class="btn alt" id="shopBtn">🛒 Shop (${G.coins} 🪙)</button>
+        <button class="btn ghost" id="achBtn">🏅 Erfolge (${G.achievements.length}/${ACHIEVEMENTS.length})</button>
         <button class="btn ghost" id="resetBtn">🗑️ Fortschritt zurücksetzen</button>
       </div>
       <p class="footnote">Tipp: Schnelle Antworten geben Bonus. Combos schalten Extra-Leben ❤️ frei. 🔊 oben schaltet den Ton.</p>
@@ -679,6 +757,8 @@ function showStart(){
   document.getElementById('playBtn').onclick = ()=>{ audio(); S.click(); showMap(); };
   document.getElementById('trainBtn').onclick = ()=>{ audio(); S.click(); showTraining(); };
   document.getElementById('customBtn').onclick = ()=>{ audio(); S.click(); showCustomVocab(); };
+  document.getElementById('shopBtn').onclick = ()=>{ audio(); S.click(); showShop(showStart); };
+  document.getElementById('achBtn').onclick = ()=>{ audio(); S.click(); showAchievements(showStart); };
   document.getElementById('resetBtn').onclick = ()=>{
     if(confirm('Wirklich allen Fortschritt löschen?')){ G=defaultGame(); saveGame(); S.click(); showStart(); }
   };
@@ -714,9 +794,13 @@ function showMap(){
         </div>
       </div>
       <button class="btn ghost" id="progBtn" style="margin-top:16px">📊 Code-Fortschritt</button>
+      <button class="btn ghost" id="shopBtn" style="margin-top:8px">🛒 Shop (${G.coins} 🪙)</button>
+      <button class="btn ghost" id="achBtn" style="margin-top:8px">🏅 Erfolge (${G.achievements.length}/${ACHIEVEMENTS.length})</button>
       <button class="btn ghost" id="homeBtn" style="margin-top:8px">← Startbildschirm</button>
     </div>`;
   document.getElementById('progBtn').onclick=()=>{ S.click(); showProgress(); };
+  document.getElementById('shopBtn').onclick=()=>{ S.click(); showShop(showMap); };
+  document.getElementById('achBtn').onclick=()=>{ S.click(); showAchievements(showMap); };
   document.querySelectorAll('.missionCard[data-i]').forEach(c=>{
     c.onclick=()=>{
       const i=+c.dataset.i;
@@ -903,6 +987,105 @@ function showProgress(custom){
   document.getElementById('back').onclick=()=>{ S.click(); custom?showCustomVocab():showMap(); };
 }
 
+/* ============================================================
+   SHOP — Verbrauchsgegenstände & Avatar-Skins gegen Münzen
+   ============================================================ */
+function showShop(backFn){
+  M=null; dlg=null; hud.style.display='flex'; clearInterval(timerInt); updateHUD();
+  elMissionChip.textContent = '🛒 Shop';
+  const consumables = SHOP_ITEMS.filter(s=>s.type==='consumable').map(it=>{
+    const owned = G.inv[it.key]||0;
+    return `<div class="missionCard" data-buy="${it.id}">
+      <div class="missionEmoji">${it.icon}</div>
+      <div class="missionInfo"><b>${esc(it.name)}</b><small>${esc(it.desc)} · du hast ${owned}</small></div>
+      <div class="missionState">${it.price}🪙</div>
+    </div>`;
+  }).join('');
+  const skins = SHOP_ITEMS.filter(s=>s.type==='skin').map(it=>{
+    const owned = G.skins.includes(it.emoji);
+    const active = G.skin===it.emoji;
+    return `<div class="missionCard ${active?'done':''}" data-skin="${it.id}">
+      <div class="missionEmoji">${it.emoji}</div>
+      <div class="missionInfo"><b>${esc(it.name)}</b><small>${active?'Aktiv getragen':(owned?'Im Besitz – antippen zum Anlegen':'Neuer Look für deinen Agenten')}</small></div>
+      <div class="missionState">${owned?(active?'✅':'👕'):(it.price+'🪙')}</div>
+    </div>`;
+  }).join('');
+  screen.innerHTML = `
+    <div class="center">
+      <h1 class="title" style="font-size:26px">🛒 Agenten-Shop</h1>
+      <p class="subtitle">🪙 ${G.coins} Münzen verfügbar</p>
+      <p class="subtitle" style="margin:14px 0 4px;text-align:left">🎒 Ausrüstung</p>
+      <div class="missionList">${consumables}</div>
+      <p class="subtitle" style="margin:14px 0 4px;text-align:left">🕴️ Skins</p>
+      <div class="missionList">${skins}</div>
+      <button class="btn ghost" id="back" style="margin-top:16px">← Zurück</button>
+    </div>`;
+  document.querySelectorAll('[data-buy]').forEach(c=>{
+    c.onclick=()=>{
+      const it = SHOP_ITEMS.find(s=>s.id===c.dataset.buy);
+      if(G.coins<it.price){ S.wrong(); c.classList.add('shake'); setTimeout(()=>c.classList.remove('shake'),400); return; }
+      G.coins-=it.price; G.inv[it.key]=(G.inv[it.key]||0)+1; saveGame(); S.correct(); showShop(backFn);
+    };
+  });
+  document.querySelectorAll('[data-skin]').forEach(c=>{
+    c.onclick=()=>{
+      const it = SHOP_ITEMS.find(s=>s.id===c.dataset.skin);
+      if(G.skins.includes(it.emoji)){ G.skin=it.emoji; saveGame(); S.click(); updateHUD(); showShop(backFn); return; }
+      if(G.coins<it.price){ S.wrong(); c.classList.add('shake'); setTimeout(()=>c.classList.remove('shake'),400); return; }
+      G.coins-=it.price; G.skins.push(it.emoji); G.skin=it.emoji; saveGame(); S.correct();
+      burst(innerWidth/2, innerHeight*0.4, 30); showShop(backFn);
+    };
+  });
+  document.getElementById('back').onclick=()=>{ S.click(); backFn(); };
+}
+
+/* ============================================================
+   ERFOLGE — Übersicht aller Achievements
+   ============================================================ */
+function showAchievements(backFn){
+  backFn = backFn || showMap;
+  M=null; dlg=null; hud.style.display='flex'; clearInterval(timerInt); updateHUD();
+  elMissionChip.textContent = '🏅 Erfolge';
+  const rows = ACHIEVEMENTS.map(a=>{
+    const got = G.achievements.includes(a.id);
+    return `<div class="mrow" style="opacity:${got?1:.5}">
+      <div class="memo">${got?a.icon:'🔒'}</div>
+      <div class="minfo"><b>${esc(a.name)}</b><small>${esc(a.desc)}${got?' · freigeschaltet':' · +'+a.reward+'🪙'}</small></div>
+    </div>`;
+  }).join('');
+  screen.innerHTML = `
+    <div class="center">
+      <h1 class="title" style="font-size:24px">🏅 Erfolge</h1>
+      <p class="subtitle">${G.achievements.length}/${ACHIEVEMENTS.length} freigeschaltet</p>
+      ${rows}
+      <button class="btn ghost" id="back" style="margin-top:14px">← Zurück</button>
+    </div>`;
+  document.getElementById('back').onclick=()=>{ S.click(); backFn(); };
+}
+
+/* ============================================================
+   TAGES-BONUS — einmal pro Kalendertag, mit Login-Streak
+   ============================================================ */
+function showDailyRewardScreen(){
+  M=null; dlg=null; hud.style.display='none'; clearInterval(timerInt);
+  const r = dailyReward;
+  const flames = Array.from({length:7},(_,i)=> i<r.cycleDay ? '🔥':'⚪').join(' ');
+  screen.innerHTML = `
+    <div class="center">
+      <div style="font-size:60px" class="pulse">🎁</div>
+      <h1 class="title" style="font-size:28px">Tages-Bonus!</h1>
+      <div class="panel">
+        <p class="story" style="text-align:center">Willkommen zurück, Agent! Du bist <b>${r.streak}</b> Tag${r.streak===1?'':'e'} in Folge im Einsatz.</p>
+        <div style="font-size:22px;margin:14px 0">${flames}</div>
+        <div class="badgeRow"><span class="bChip">+${r.coins} 🪙</span></div>
+        <button class="btn" id="claimBtn">🎉 Abholen</button>
+      </div>
+    </div>`;
+  document.getElementById('claimBtn').onclick=()=>{
+    S.correct(); burst(innerWidth/2, innerHeight*0.3, 40); dailyReward=null; showStart();
+  };
+}
+
 function showBriefing(i){
   const m = MISSIONS[i];
   hud.style.display='flex'; updateHUD(); elMissionChip.textContent = m.emoji+' '+m.name;
@@ -1007,11 +1190,12 @@ function registerCorrect(anchorEl, fast){
   if(!M.training && M.streak%5===0 && M.lives<M.maxLives){ M.lives++; showCombo('+1 ❤️ BONUS-LEBEN!'); }
   const mult = M.streak>=8 ? 3 : M.streak>=4 ? 2 : 1;
   const coins=(6+(fast?6:0))*mult, xp=(10+(fast?6:0))*mult;
-  G.coins += coins; S.correct();
+  awardCoins(coins); S.correct();
   if(anchorEl){ const r=anchorEl.getBoundingClientRect(); burst(r.left+r.width/2, r.top+r.height/2, 22); }
   else burst(innerWidth/2, innerHeight*0.4, 22);
   if(mult>1 && M.streak%5!==0) showCombo('COMBO x'+mult+' 🔥');
   addXP(xp);
+  checkAchievements();
   return {coins,xp,mult};
 }
 function registerWrong(){
@@ -1032,7 +1216,15 @@ function resolve(correct, anchorEl, answerText, fast){
     if(fb) fb.innerHTML = `<span style="color:var(--bad)">❌ Richtig: <b>${esc(answerText)}</b></span>`;
     const p=document.getElementById('qpanel')||document.querySelector('.panel');
     if(p){ p.classList.add('shake'); setTimeout(()=>p.classList.remove('shake'),420); }
-    if(!M.training && M.lives<=0){ setTimeout(missionFailed, 1300); return; }
+    if(!M.training && M.lives<=0){
+      if(G.inv.life>0){
+        G.inv.life--; M.lives=1; saveGame(); updateHUD();
+        showCombo('🛟 Rettungsanker eingesetzt!');
+        advance(1700);
+        return;
+      }
+      setTimeout(missionFailed, 1300); return;
+    }
     advance(1550);
   }
 }
@@ -1077,6 +1269,20 @@ function chooseTimeUp(ans){
   });
   resolve(false, null, ans, false);
 }
+/* Joker-Button für Schnellwahl/Abhören: streicht 2 falsche Optionen */
+function jokerHTML(){
+  return G.inv.joker>0 ? `<button class="btn alt mini" id="joker">🃏 Joker (${G.inv.joker})</button>` : '';
+}
+function wireJoker(correctTxt){
+  const b=document.getElementById('joker'); if(!b) return;
+  b.onclick=()=>{
+    if(answered) return;
+    G.inv.joker--; saveGame();
+    const wrong = shuffle([...document.querySelectorAll('#opts .opt')].filter(o=>o.textContent!==correctTxt));
+    wrong.slice(0,2).forEach(o=>{ o.classList.add('dim'); o.onclick=null; });
+    S.click(); b.remove();
+  };
+}
 
 /* ============================================================
    LERNMETHODE 1 — Schnellwahl (Multiple Choice)
@@ -1099,10 +1305,12 @@ function renderChoose(task){
         <div class="options" id="opts">
           ${options.map((o,idx)=>`<button class="opt" data-i="${idx}">${esc(o)}</button>`).join('')}
         </div>
+        ${jokerHTML()}
         <div class="feedback" id="fb"></div>
       </div>
     </div>`;
   document.getElementById('qspeak').onclick=()=>speak(v[promptKey], pf.code);
+  wireJoker(v[targetKey]);
   document.querySelectorAll('#opts .opt').forEach(b=>{
     b.onclick=()=>{
       if(answered) return;
@@ -1136,12 +1344,14 @@ function renderListen(task){
         <div class="options" id="opts">
           ${options.map((o,idx)=>`<button class="opt" data-i="${idx}">${esc(o)}</button>`).join('')}
         </div>
+        ${jokerHTML()}
         <div class="feedback" id="fb"></div>
       </div>
     </div>`;
   const sp=()=>{ speak(v[heard], hm.code); };
   document.getElementById('play').onclick=sp;
   setTimeout(sp, 350);
+  wireJoker(v[optKey]);
   document.querySelectorAll('#opts .opt').forEach(b=>{
     b.onclick=()=>{
       if(answered) return;
@@ -1355,10 +1565,11 @@ function missionComplete(){
   if(i+1>=G.unlocked && !last) G.unlocked=i+2;
   if(last) G.unlocked=Math.max(G.unlocked, MISSIONS.length+1);
   if(M.m.badge && !G.badges.includes(M.m.badge)) G.badges.push(M.m.badge);
+  if(M.mistakes===0 && !G.perfectMissions.includes(i)) G.perfectMissions.push(i);
   const pct = Math.round((M.correct/Math.max(1,M.total))*100);
   const stars = pct>=90?'⭐⭐⭐':pct>=70?'⭐⭐':'⭐';
-  const bonus = 40 + i*20; G.coins += bonus;
-  saveGame();
+  const bonus = 40 + i*20; awardCoins(bonus);
+  saveGame(); checkAchievements();
   S.win(); burst(innerWidth/2, innerHeight*0.35, 80);
   const earnedBadge = M.m.badge;
   screen.innerHTML = `
@@ -1413,6 +1624,7 @@ function missionFailed(){
 }
 
 /* ---------- los ---------- */
+claimDailyLogin();
 updateHUD();
 showStart();
 </script>
