@@ -254,7 +254,7 @@ const VOCAB = [
   {id:55, en:"Can I call you back later?",        de:"Kann ich Sie später zurückrufen?"},
   {id:56, en:"Would you like to leave a message?",de:"Wollen Sie eine Nachricht hinterlassen?"},
 ];
-const byId = id => VOCAB.find(v=>v.id===id);
+const byId = id => VOCAB.find(v=>v.id===id) || G.custom.find(v=>v.id===id);
 
 /* ---------- Charaktere ---------- */
 const CHARS = {
@@ -353,7 +353,7 @@ const LANGMETA = {
 const SAVE_KEY = "agentphone_save_v2";
 let G = loadGame();
 function defaultGame(){
-  return { unlocked:1, coins:0, level:1, xp:0, bestStreak:0, badges:[], cards:{}, reviews:0 };
+  return { unlocked:1, coins:0, level:1, xp:0, bestStreak:0, badges:[], cards:{}, reviews:0, custom:[] };
 }
 function loadGame(){
   try{
@@ -362,12 +362,15 @@ function loadGame(){
       if(!Array.isArray(s.badges)) s.badges=[];
       if(!s.cards || typeof s.cards!=='object') s.cards={}; // SRS-Speicher nachrüsten
       if(typeof s.reviews!=='number') s.reviews=0;
+      if(!Array.isArray(s.custom)) s.custom=[]; // eigene Vokabelliste nachrüsten
       return s;
     }
     return defaultGame();
   }catch(e){ return defaultGame(); }
 }
 function saveGame(){ try{ localStorage.setItem(SAVE_KEY, JSON.stringify(G)); }catch(e){} }
+function customIds(){ return G.custom.map(v=>v.id); }
+function newCustomId(){ return 'c'+Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
 
 /* Laufende Mission / Training */
 let M = null;
@@ -476,9 +479,10 @@ function pickReviewId(pool, lastId){
   return cand[cand.length-1];
 }
 /* Pool der fälligen/schwachen Codes (für Schwächen-Training) */
-function weakPool(){
+function weakPool(ids){
+  ids = ids || VOCAB.map(v=>v.id);
   const now=Date.now();
-  return VOCAB.map(v=>v.id).filter(id=>{
+  return ids.filter(id=>{
     const c=G.cards[id]; if(!c) return false;
     const elapsed=Math.max(0,(now-c.last)/DAY);
     return c.lapses>0 || (c.due && c.due<=now) || retr(c.s,elapsed)<0.9;
@@ -667,12 +671,14 @@ function showStart(){
         ${seenBadges}
         <button class="btn" id="playBtn">▶︎ Mission starten</button>
         <button class="btn alt" id="trainBtn">🎯 Freies Training</button>
+        <button class="btn alt" id="customBtn">📝 Eigene Vokabeln${G.custom.length?' ('+G.custom.length+')':''}</button>
         <button class="btn ghost" id="resetBtn">🗑️ Fortschritt zurücksetzen</button>
       </div>
       <p class="footnote">Tipp: Schnelle Antworten geben Bonus. Combos schalten Extra-Leben ❤️ frei. 🔊 oben schaltet den Ton.</p>
     </div>`;
   document.getElementById('playBtn').onclick = ()=>{ audio(); S.click(); showMap(); };
   document.getElementById('trainBtn').onclick = ()=>{ audio(); S.click(); showTraining(); };
+  document.getElementById('customBtn').onclick = ()=>{ audio(); S.click(); showCustomVocab(); };
   document.getElementById('resetBtn').onclick = ()=>{
     if(confirm('Wirklich allen Fortschritt löschen?')){ G=defaultGame(); saveGame(); S.click(); showStart(); }
   };
@@ -755,14 +761,122 @@ function showTraining(){
   document.getElementById('back').onclick=()=>{ S.click(); showMap(); };
 }
 
-function showProgress(){
+/* ============================================================
+   EIGENE VOKABELLISTE (individuelle Vokabeln)
+   ============================================================ */
+function parseCustomLine(line){
+  line = line.replace(/\r$/,'').trim();
+  if(!line) return null;
+  const seps = ['\t',';','=',' - ','–',':'];
+  for(const sep of seps){
+    const idx = line.indexOf(sep);
+    if(idx>0){
+      const a=line.slice(0,idx).trim(), b=line.slice(idx+sep.length).trim();
+      if(a && b) return {en:a, de:b};
+    }
+  }
+  return null;
+}
+function addCustomFromText(text){
+  let added=0, skipped=0;
+  String(text||'').split('\n').forEach(line=>{
+    if(!line.trim()) return;
+    const pair = parseCustomLine(line);
+    if(pair){ G.custom.push({id:newCustomId(), en:pair.en, de:pair.de}); added++; }
+    else skipped++;
+  });
+  if(added) saveGame();
+  return {added, skipped};
+}
+function deleteCustomWord(id){
+  G.custom = G.custom.filter(v=>v.id!==id);
+  delete G.cards[id];
+  saveGame();
+}
+function clearAllCustom(){
+  G.custom.forEach(v=>{ delete G.cards[v.id]; });
+  G.custom = [];
+  saveGame();
+}
+function showCustomVocab(){
+  M=null; dlg=null; hud.style.display='flex'; clearInterval(timerInt); updateHUD();
+  elMissionChip.textContent = '📝 Eigene Vokabeln';
+  const n = G.custom.length;
+  const rows = G.custom.map(v=>`
+    <div class="mrow">
+      <div class="memo">📝</div>
+      <div class="minfo"><b>${esc(v.en)}</b><small>${esc(v.de)}</small></div>
+      <button class="btn ghost mini" data-del="${v.id}" style="flex:none;margin-top:0">🗑️</button>
+    </div>`).join('') || '<p class="footnote">Noch keine eigenen Vokabeln. Füge oben deine Liste ein!</p>';
+  const methods=['choose','listen','scramble','type','memory'];
+  const minNeed = {choose:2, listen:2, scramble:1, type:1, memory:2};
+  const weak = weakPool(customIds()).length;
+  const reviewCard = n>=2 ? `
+    <div class="missionCard train" data-m="review">
+      <div class="missionEmoji">🩺</div>
+      <div class="missionInfo"><b>Schwächen-Training</b>
+        <small>${weak?weak+' fällige/schwache Vokabeln':'gemischte Methoden, SRS-gesteuert'}</small></div>
+      <div class="missionState">${weak||'∞'}</div>
+    </div>` : '';
+  const cards = methods.map(x=>`
+    <div class="missionCard ${n<minNeed[x]?'locked':''}" data-m="${x}">
+      <div class="missionEmoji">${METHOD_INFO[x].icon}</div>
+      <div class="missionInfo"><b>${METHOD_INFO[x].name}</b><small>${METHOD_DESC[x]}</small></div>
+      <div class="missionState">▶︎</div>
+    </div>`).join('');
+  screen.innerHTML = `
+    <div class="center">
+      <h1 class="title" style="font-size:24px">📝 Eigene Vokabeln</h1>
+      <p class="subtitle">Füge deine individuelle Vokabelliste ein — eine Zeile pro Vokabel, z.&nbsp;B. <code>hello = hallo</code>
+        (auch Tab, <code>;</code>, <code>-</code> oder <code>:</code> als Trenner möglich).</p>
+      <div class="panel">
+        <textarea id="bulkIn" rows="5" style="width:100%;font-size:15px;padding:10px;border-radius:12px;border:1px solid var(--cardbr);background:rgba(0,0,0,.25);color:var(--txt);font-family:inherit;resize:vertical;" placeholder="hello = hallo&#10;goodbye = auf Wiedersehen"></textarea>
+        <button class="btn" id="addBtn">➕ Zur Liste hinzufügen</button>
+      </div>
+      <div class="mstat">${rows}</div>
+      ${n?'<button class="btn ghost" id="clearBtn">🗑️ Alle eigenen Vokabeln löschen</button>':''}
+      <h1 class="title" style="font-size:20px;margin-top:18px">Üben</h1>
+      <div class="missionList">${reviewCard}${cards}</div>
+      <button class="btn ghost" id="progBtn" style="margin-top:16px">📊 Fortschritt ansehen</button>
+      <button class="btn ghost" id="back" style="margin-top:8px">← Zurück</button>
+    </div>`;
+  document.getElementById('addBtn').onclick=()=>{
+    const ta=document.getElementById('bulkIn');
+    const {added, skipped} = addCustomFromText(ta.value);
+    if(added){ S.click(); showCombo('+'+added+' Vokabeln hinzugefügt!'); }
+    else if(skipped){ S.wrong(); alert('Keine gültigen Zeilen erkannt. Format pro Zeile: Begriff = Übersetzung'); }
+    showCustomVocab();
+  };
+  screen.querySelectorAll('[data-del]').forEach(b=>{
+    b.onclick=()=>{ S.click(); deleteCustomWord(b.dataset.del); showCustomVocab(); };
+  });
+  if(document.getElementById('clearBtn')) document.getElementById('clearBtn').onclick=()=>{
+    if(confirm('Wirklich alle eigenen Vokabeln löschen?')){ clearAllCustom(); S.click(); showCustomVocab(); }
+  };
+  document.querySelectorAll('.missionCard[data-m]').forEach(c=>{
+    c.onclick=()=>{
+      if(c.classList.contains('locked')){
+        S.wrong(); c.classList.add('shake'); setTimeout(()=>c.classList.remove('shake'),400); return;
+      }
+      audio(); S.click(); startTraining(c.dataset.m, true);
+    };
+  });
+  document.getElementById('progBtn').onclick=()=>{
+    if(!n){ S.wrong(); return; }
+    S.click(); showProgress(true);
+  };
+  document.getElementById('back').onclick=()=>{ S.click(); showStart(); };
+}
+
+function showProgress(custom){
   M=null; dlg=null; hud.style.display='flex'; clearInterval(timerInt); updateHUD();
   elMissionChip.textContent = '📊 Fortschritt';
+  const vocab = custom ? G.custom : VOCAB;
   const now=Date.now();
-  const seen     = VOCAB.filter(v=>G.cards[v.id]).length;
-  const mastered = VOCAB.filter(v=>{const c=G.cards[v.id];return c&&c.s>=16;}).length;
-  const due      = VOCAB.filter(v=>{const c=G.cards[v.id];return c&&c.due&&c.due<=now;}).length;
-  const rows = VOCAB.slice().sort((a,b)=>cardScore(b.id,now)-cardScore(a.id,now)).map(v=>{
+  const seen     = vocab.filter(v=>G.cards[v.id]).length;
+  const mastered = vocab.filter(v=>{const c=G.cards[v.id];return c&&c.s>=16;}).length;
+  const due      = vocab.filter(v=>{const c=G.cards[v.id];return c&&c.due&&c.due<=now;}).length;
+  const rows = vocab.slice().sort((a,b)=>cardScore(b.id,now)-cardScore(a.id,now)).map(v=>{
     const t=masteryTag(v.id), p=masteryPct(v.id), c=G.cards[v.id];
     const meta = c ? `${t.label} · ${c.reps}× geübt${c.lapses?' · '+c.lapses+' Fehler':''}` : 'noch nicht geübt';
     return `<div class="mrow">
@@ -770,22 +884,23 @@ function showProgress(){
       <div class="minfo"><b>${esc(v.en)}</b><small>${esc(v.de)} — ${meta}</small>
         <div class="mbar"><div class="mfill" style="width:${p}%"></div></div></div>
     </div>`;
-  }).join('');
+  }).join('') || '<p class="footnote">Noch keine Vokabeln vorhanden.</p>';
+  const canReview = !custom || vocab.length>=2;
   screen.innerHTML = `
     <div class="center">
-      <h1 class="title" style="font-size:24px">📊 Code-Fortschritt</h1>
+      <h1 class="title" style="font-size:24px">📊 ${custom?'Eigene Vokabeln — Fortschritt':'Code-Fortschritt'}</h1>
       <p class="subtitle">Spaced Repetition merkt sich, was sitzt – und bringt Schwaches gezielt zurück.</p>
       <div class="statRow mstat">
-        <div class="stat"><b>${mastered}/${VOCAB.length}</b><small>gemeistert</small></div>
+        <div class="stat"><b>${mastered}/${vocab.length}</b><small>gemeistert</small></div>
         <div class="stat"><b>${seen}</b><small>angefangen</small></div>
         <div class="stat"><b>${due}</b><small>fällig 🔁</small></div>
       </div>
-      <button class="btn" id="revBtn">🩺 ${due>0?(due+' fällige Codes üben'):'Schwächen-Training'}</button>
+      ${canReview?`<button class="btn" id="revBtn">🩺 ${due>0?(due+' fällige Vokabeln üben'):'Schwächen-Training'}</button>`:''}
       ${rows}
       <button class="btn ghost" id="back" style="margin-top:14px">← Zurück</button>
     </div>`;
-  document.getElementById('revBtn').onclick=()=>{ audio(); S.click(); startTraining('review'); };
-  document.getElementById('back').onclick=()=>{ S.click(); showMap(); };
+  if(canReview) document.getElementById('revBtn').onclick=()=>{ audio(); S.click(); startTraining('review', custom); };
+  document.getElementById('back').onclick=()=>{ S.click(); custom?showCustomVocab():showMap(); };
 }
 
 function showBriefing(i){
@@ -881,7 +996,7 @@ function appendTrainExit(){
   const c=screen.querySelector('.center'); if(!c) return;
   const b=document.createElement('button');
   b.className='btn ghost'; b.textContent='🚪 Training beenden'; b.style.marginTop='14px';
-  b.onclick=()=>{ S.click(); M=null; showMap(); };
+  b.onclick=()=>{ S.click(); const wasCustom=M&&M.custom; M=null; wasCustom?showCustomVocab():showMap(); };
   c.appendChild(b);
 }
 
@@ -970,7 +1085,7 @@ function renderChoose(task){
   const v=byId(task.id), dir=task.dir;
   const targetKey = dir==='en2de' ? 'de':'en';
   const promptKey = dir==='en2de' ? 'en':'de';
-  const pool = shuffle(VOCAB.filter(x=>x.id!==task.id)).slice(0,3);
+  const pool = shuffle((M&&M.pool?M.pool:VOCAB).filter(x=>x.id!==task.id)).slice(0,3);
   const options = shuffle([v[targetKey], ...pool.map(x=>x[targetKey])]);
   const pf=LANGMETA[promptKey], af=LANGMETA[targetKey];
   screen.innerHTML = `
@@ -1006,7 +1121,7 @@ function renderChoose(task){
 function renderListen(task){
   const v=byId(task.id), heard=task.heardLang;
   const optKey = heard==='en' ? 'de':'en';
-  const pool = shuffle(VOCAB.filter(x=>x.id!==task.id)).slice(0,3);
+  const pool = shuffle((M&&M.pool?M.pool:VOCAB).filter(x=>x.id!==task.id)).slice(0,3);
   const options = shuffle([v[optKey], ...pool.map(x=>x[optKey])]);
   const hm=LANGMETA[heard], af=LANGMETA[optKey];
   screen.innerHTML = `
@@ -1188,30 +1303,33 @@ function renderMemory(task){
 /* ============================================================
    TRAINING-ENGINE (freies Üben)
    ============================================================ */
-function startTraining(method){
-  M = { training:true, method, lives:1, maxLives:1, streak:0, correct:0, solved:0, mistakes:0, m:null, lastId:null };
+function startTraining(method, custom){
+  const pool = custom ? G.custom : VOCAB;
+  M = { training:true, method, lives:1, maxLives:1, streak:0, correct:0, solved:0, mistakes:0, m:null, lastId:null,
+        pool, poolIds: pool.map(v=>v.id), custom:!!custom };
   hud.style.display='flex'; updateHUD();
   trainNext();
 }
 /* Memory-Karten: bevorzugt die schwächsten Codes */
-function pickMemoryIds(n){
+function pickMemoryIds(n, ids){
+  ids = ids || VOCAB.map(v=>v.id);
   const now=Date.now();
-  const sorted = VOCAB.map(v=>v.id).sort((a,b)=>cardScore(b,now)-cardScore(a,now));
-  return shuffle(sorted.slice(0, Math.min(VOCAB.length, n+2))).slice(0,n);
+  const sorted = ids.slice().sort((a,b)=>cardScore(b,now)-cardScore(a,now));
+  return shuffle(sorted.slice(0, Math.min(ids.length, n+2))).slice(0,n);
 }
 function trainNext(){
   if(!M) return;
   let method = M.method;
   let pool = null;                               // null = alle Codes (SRS-gewichtet)
   if(method==='review'){                          // 🩺 gemischte Methoden, schwache Codes
-    pool = weakPool(); if(pool.length<3) pool = VOCAB.map(v=>v.id);
+    pool = weakPool(M.poolIds); if(pool.length<3) pool = M.poolIds.slice();
     method = shuffle(['choose','listen','scramble','type'])[0];
   }
   let task;
   if(method==='memory'){
-    task = {method:'memory', ids: pickMemoryIds(6)};
+    task = {method:'memory', ids: pickMemoryIds(Math.min(6, M.poolIds.length), M.poolIds)};
   } else {
-    const id = pickReviewId(pool, M.lastId); M.lastId = id;
+    const id = pickReviewId(pool || M.poolIds, M.lastId); M.lastId = id;
     switch(method){
       case 'choose':   task={method:'choose', id, dir: Math.random()<.5?'en2de':'de2en'}; break;
       case 'listen':   task={method:'listen', id, heardLang: Math.random()<.5?'en':'de'}; break;
